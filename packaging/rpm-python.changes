@@ -1,0 +1,174 @@
+* Sat May 21 2011 Anas Nashif <anas.nashif@intel.com> - 4.9.0
+- Update to 4.9.0
+
+* Fri Feb 05 2010 Anas Nashif <anas.nashif@intel.com> - 4.8.0
+- Fixed python module build
+
+* Thu Jan 28 2010 Anas Nashif <anas.nashif@intel.com> - 4.8.0
+- Update to 4.8.0 final
+- Remove obsolete patches
+
+* Thu Jan 07 2010 Anas Nashif <anas.nashif@intel.com> - 4.8.0~beta1
+- Update to 4.8.0
+- Use ~ for negative versioning of snpashots and pre-releases
+
+* Sat Nov 14 2009 Anas Nashif <anas.nashif@intel.com> - 4.7.1
+- Applied fixed from FC12
+
+* Wed Sep 23 2009 Anas Nashif <anas.nashif@intel.com> - 4.7.1
+- Update to 4.7.1
+- Applied upstream patches
+
+* Sun Apr 19 2009 Anas Nashif <anas.nashif@intel.com> 4.6.0
+- rpm-build now requires moblin-rpm-config
+
+* Sat Feb 21 2009 Anas Nashif <anas.nashif@intel.com> 4.6.0
+- Remove topdir patch, use default
+
+* Fri Feb 13 2009 Anas Nashif <anas.nashif@intel.com> 4.6.0
+- Update to final 4.6.0
+
+* Sat Dec 20 2008 Arjan van de Ven <arjan@linux.intel.com> 4.6.0
+- Re-fix the pkgconfig bug
+
+* Thu Dec 18 2008 Anas Nashif <anas.nashif@intel.com> 4.6.0
+- Update to 4.6 rc3
+
+* Thu Dec 11 2008 Arjan van de Ven <arjan@linux.intel.com> 4.6.0
+- Fix the pkgconfig Requires: issue as exposed by cairo
+
+* Thu Dec 04 2008 Anas Nashif <anas.nashif@intel.com> 4.6.0
+- Update to 4.6rc2
+
+* Sun Nov 30 2008 Anas Nashif <anas.nashif@intel.com> 4.6.0
+- fix packageconfig auto dependencies
+
+* Mon Nov 24 2008 Anas Nashif <anas.nashif@intel.com> 4.6.0
+- split package to avoid long build time
+
+* Fri Nov 21 2008 Anas Nashif <anas.nashif@intel.com> 4.6.0
+- use external db 4.7
+
+* Tue Oct 28 2008 Panu Matilainen <pmatilai@redhat.com>
+- Florian's improved fingerprinting hash algorithm from upstream
+
+* Sat Oct 25 2008 Panu Matilainen <pmatilai@redhat.com>
+- Make noarch sub-packages actually work
+- Fix defaultdocdir logic in installplatform to avoid hardwiring mandir
+
+* Fri Oct 24 2008 Jindrich Novy <jnovy@redhat.com>
+- update compat-db dependencies (#459710)
+
+* Wed Oct 22 2008 Panu Matilainen <pmatilai@redhat.com>
+- never add identical NEVRA to transaction more than once (#467822)
+
+* Sun Oct 19 2008 Panu Matilainen <pmatilai@redhat.com>
+- permit tab as macro argument separator (#467567)
+
+* Thu Oct 16 2008 Panu Matilainen <pmatilai@redhat.com>
+- update to 4.6.0-rc1 
+- fixes #465586, #466597, #465409, #216221, #466503, #466009, #463447...
+- avoid using %%configure macro for now, it has unwanted side-effects on rpm
+
+* Wed Oct 01 2008 Panu Matilainen <pmatilai@redhat.com>
+- update to official 4.5.90 alpha tarball 
+- a big pile of misc bugfixes + translation updates
+- isa-macro generation fix for ppc (#464754)
+- avoid pulling in pile of perl dependencies for an unused script
+- handle both "invalid argument" and clear env version mismatch on posttrans
+
+* Thu Sep 25 2008 Jindrich Novy <jnovy@redhat.com>
+- don't treat %patch numberless if -P parameter is present (#463942)
+
+* Thu Sep 11 2008 Panu Matilainen <pmatilai@redhat.com>
+- add hack to support extracting gstreamer plugin provides (#438225)
+- fix another macro argument handling regression (#461180)
+
+* Thu Sep 11 2008 Jindrich Novy <jnovy@redhat.com>
+- create directory structure for rpmbuild prior to build if it doesn't exist (#455387)
+- create _topdir if it doesn't exist when installing SRPM
+- don't generate broken cpio in case of hardlink pointing on softlink,
+  thanks to pixel@mandriva.com
+
+* Sat Sep 06 2008 Jindrich Novy <jnovy@redhat.com>
+- fail hard if patch isn't found (#461347)
+
+* Mon Sep 01 2008 Jindrich Novy <jnovy@redhat.com>
+- fix parsing of boolean expressions in spec (#456103)
+  (unbreaks pam, jpilot and maybe other builds)
+
+* Tue Aug 26 2008 Jindrich Novy <jnovy@redhat.com>
+- add support for noarch subpackages
+- fix segfault in case of insufficient disk space detected (#460146)
+
+* Wed Aug 13 2008 Panu Matilainen <pmatilai@redhat.com>
+- 4.5.90-0.git8461.2
+- fix archivesize tag generation on ppc (#458817)
+
+* Fri Aug 08 2008 Panu Matilainen <pmatilai@redhat.com>
+- 4.5.90-0.git8461.1
+- new snapshot from upstream
+- fixes #68290, #455972, #446202, #453364, #456708, #456103, #456321, #456913,
+  #458260, #458261
+- partial fix for #457360
+
+* Thu Jul 31 2008 Florian Festi <ffesti@redhat.com>
+- 4.5.90-0.git8427.1
+- new snapshot from upstream
+
+* Thu Jul 31 2008 Florian Festi <ffesti@redhat.com>
+- 4.5.90-0.git8426.10
+- rpm-4.5.90-posttrans.patch
+- use header from rpmdb in posttrans to make anaconda happy
+
+* Sat Jul 19 2008 Panu Matilainen <pmatilai@redhat.com>
+- 4.5.90-0.git8426.9
+- fix regression in patch number handling (#455872)
+
+* Tue Jul 15 2008 Panu Matilainen <pmatilai@redhat.com>
+- 4.5.90-0.git8426.8
+- fix regression in macro argument handling (#455333)
+
+* Mon Jul 14 2008 Panu Matilainen <pmatilai@redhat.com>
+- 4.5.90-0.git8426.7
+- fix mono dependency extraction (adjust for libmagic string change)
+
+* Sat Jul 12 2008 Panu Matilainen <pmatilai@redhat.com>
+- 4.5.90-0.git8426.6
+- fix type mismatch causing funky breakage on ppc64
+
+* Fri Jul 11 2008 Panu Matilainen <pmatilai@redhat.com>
+- 4.5.90-0.git8426.5
+- flip back to external bdb
+- fix tab vs spaces complaints from rpmlint
+- add dep for lzma and require unzip instead of zip in build (#310694)
+- add pkgconfig dependency to rpm-devel
+- drop ISA-dependencies for initial introduction
+- new snapshot from upstream for documentation fixes
+
+* Thu Jul 10 2008 Panu Matilainen <pmatilai@redhat.com>
+- 4.5.90-0.git8424.4
+- handle int vs external db in posttrans too
+
+* Wed Jul 08 2008 Panu Matilainen <pmatilai@redhat.com>
+- 4.5.90-0.git8424.3
+- require curl as external url helper
+
+* Wed Jul 08 2008 Panu Matilainen <pmatilai@redhat.com>
+- 4.5.90-0.git8424.2
+- add support for building with or without internal db
+
+* Wed Jul 08 2008 Panu Matilainen <pmatilai@redhat.com>
+- rpm 4.5.90-0.git8424.1 (alpha snapshot)
+- adjust to build against Berkeley DB 4.5.20 from compat-db for now
+- add posttrans to clean up db environment mismatch after upgrade
+- forward-port devel autodeps patch
+
+* Tue Jul 08 2008 Panu Matilainen <pmatilai@redhat.com>
+- adjust for rpmdb index name change
+- drop unnecessary vendor-macro patch for real
+- add ISA-dependencies among rpm subpackages
+- make lzma and sqlite deps conditional and disabled by default for now
+
+* Fri Feb 01 2008 Panu Matilainen <pmatilai@redhat.com>
+- spec largely rewritten, truncating changelog
