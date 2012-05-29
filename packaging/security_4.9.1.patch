@@ -5027,7 +5027,6 @@ index 0000000..c0850f0
 +    return 0;	
 +
 +}
-+
 +int msmSetupPackages(struct smack_accesses *smack_accesses, package_x *packages, sw_source_x *sw_source)
 +{
 +    package_x *package, *first = NULL;
@@ -5106,16 +5105,17 @@ index 0000000..c0850f0
 +
 + char buffer[1024];
 + int result;
-+ char string[] = "file ";
++ char string[] = "file \"";
 + char* ptr = NULL, *ptr1 = NULL;
 + FILE* pipe;
 +
 + if (!path)
 +	return -1;
 +
-+ char* str = calloc(strlen(path) + 6, sizeof (char*));
-+ strncpy(str, string, 5);
-+ strncpy(str + 5, path, strlen(path));
++ char* str = calloc(strlen(path) + 8, sizeof (char*));
++ strncpy(str, string, 6);
++ strncpy(str + 6, path, strlen(path));
++ strncpy(str + 6 + strlen(path), "\"", 1);
 +
 + pipe = popen(str, "r");
 + if (!pipe) {
@@ -5129,15 +5129,16 @@ index 0000000..c0850f0
 +	ptr = strchr(buffer,':');
 +	if (ptr!= NULL) { 
 +		ptr1 = strstr(ptr,"executable");
++		if (ptr1) result = 0;	
++		ptr1 = strstr(ptr,"ELF");
 +		if (ptr1) result = 0;		
 +	}
 + }
++
 + free(str);
 + pclose(pipe);
 + return result;
 +}
-+
-+
 +int msmSetFilesystemLabels(manifest_x *mfx) {
 +    file_x *file;
 +    provide_x *provide;
@@ -5150,8 +5151,7 @@ index 0000000..c0850f0
 +    int match = 0;
 +    struct stat st;
 +
-+
-+    for (file = mfx->files; file; file = file->prev) {
++   for (file = mfx->files; file; file = file->prev) {
 +	if (mfx->name) {
 +		package_x *package = msmCheckPackage(mfx->name);
 +		if (!package)
@@ -5170,30 +5170,31 @@ index 0000000..c0850f0
 +			    if (!strncmp(file->path, filesystem->path, len)) {
 +				/* partial match */
 +				label = filesystem->label;
-+			    	exec_label = filesystem->exec_label;
++			    exec_label = filesystem->exec_label;
 +				match = len;
 +			    }
 +			}
 +		    }
 +		}
 +	} else 
-+		return -1;
-+	
-+    found:
 +
-+	if (!label) {
++		return -1;
++    found:
++	if ((!label) || (!exec_label)) {
 +	    /* no match, use default label of AC domain */
 +	    if (mfx->request) { //AC domain is requested in manifest
 +		if (mfx->request->ac_domain)
-+			label = mfx->request->ac_domain;
++			if (!label) label = mfx->request->ac_domain;
++			if (!exec_label) exec_label = mfx->request->ac_domain;
 +		else {
 +			rpmlog(RPMLOG_ERR, "Request for AC domain is empty. Can't identify default file label\n");
 +			return -1;
 +		}
 +	     } else if (mfx->define) { // AC domain defined in manifest
-+		if (mfx->define->name)
-+			label = mfx->define->name;
-+		else {
++		if (mfx->define->name) {
++			if (!label) label = mfx->define->name;
++			if (!exec_label) exec_label = mfx->define->name;
++		} else {
 +			rpmlog(RPMLOG_ERR, "Define for AC domain is empty. Can't identify default file label\n");
 +			return -1;
 +		}		 
@@ -5228,22 +5229,20 @@ index 0000000..c0850f0
 +		   label, file->path, strerror(errno));
 +	}
 +
-+
 +	if ((is_executable(file->path)) == 0) {
 +		if ((exec_label) && (strcmp(exec_label, "none") == 0)) {
 +			// do not set SMACK64EXEC
 +			rpmlog(RPMLOG_INFO, "not setting SMACK64EXEC for %s as requested in manifest\n", file->path);
 +		} else {
-+			rpmlog(RPMLOG_INFO, "setting SMACK64EXEC %s for %s\n", mfx->request->ac_domain, file->path);
-+			ret = fsetxattr(fd, SMACK64EXEC, mfx->request->ac_domain, strlen(mfx->request->ac_domain), 0);
++			rpmlog(RPMLOG_INFO, "setting SMACK64EXEC %s for %s\n", exec_label, file->path);
++			ret = fsetxattr(fd, SMACK64EXEC, exec_label, strlen(exec_label), 0);
 +			if (ret < 0) {
 +		    		rpmlog(RPMLOG_ERR, "Failed to set SMACK64EXEC %s for %s: %s\n", 
-+			   mfx->request->ac_domain, file->path, strerror(errno));
++			   exec_label, file->path, strerror(errno));
 +			}
 +		}
 +	}
-+
-+
++		
 +	if (type) { //marked as transmutable
 +		if (S_ISDIR(st.st_mode)) { //check that it is a directory
 +			char at_true[]="TRUE";
@@ -5260,9 +5259,11 @@ index 0000000..c0850f0
 +	
 +	}
 +
-+    next:
++   next:
 +	close(fd);
 +	label = NULL;
++   exec_label = NULL;
++
 +    }
 +    return 0;
 +}

@@ -140,8 +140,6 @@ Requires: rpm = %{version}-%{release}
 Requires: libsmack
 Requires: libxml2
 Requires: file
-Requires: uthash
-Requires: nss
 
 %description security-plugin
 This package contains the MSM security plugin for rpm that performs
