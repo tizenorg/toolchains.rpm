@@ -14,6 +14,7 @@ Source11:       db-4.8.30.tar.gz
 Source20:       macros
 Source21:       find-docs.sh
 Source22:       device-sec-policy
+Source1001: packaging/rpm.manifest 
 
 Patch1:         db.diff
 # quilt patches start here
@@ -188,6 +189,7 @@ rm -f m4/libtool.m4
 rm -f m4/lt*.m4
 
 %build
+cp %{SOURCE1001} .
 CPPFLAGS="$CPPFLAGS `pkg-config --cflags nss`"
 CFLAGS="%{optflags}"
 export CPPFLAGS CFLAGS LDFLAGS
@@ -272,6 +274,7 @@ exit 0
 
 
 %files  -f rpm.lang
+%manifest rpm.manifest
 %defattr(-,root,root,-)
 %doc GROUPS COPYING CREDITS
 %exclude /usr/lib/rpm/rpmdb_loadcvt
@@ -309,10 +312,12 @@ exit 0
 %{_libdir}/rpm/platform
 
 %files libs
+%manifest rpm.manifest
 %defattr(-,root,root)
 %{_libdir}/librpm*.so.*
 
 %files build
+%manifest rpm.manifest
 %defattr(-,root,root)
 %{_bindir}/rpmbuild
 %{_bindir}/gendiff
@@ -360,6 +365,7 @@ exit 0
 
 
 %files devel
+%manifest rpm.manifest
 %defattr(-,root,root)
 %{_includedir}/rpm
 %{_libdir}/librp*[a-z].so
@@ -368,6 +374,7 @@ exit 0
 
 
 %files security-plugin
+%manifest rpm.manifest
 %defattr(-,root,root)
 %{_libdir}/rpm-plugins/msm.so
 %config(noreplace) %{_sysconfdir}/device-sec-policy
