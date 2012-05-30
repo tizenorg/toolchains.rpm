@@ -19,6 +19,7 @@ Release: 1
 BuildRequires: python-devel
 %{expand:%(sed -n -e '/^Source0:/,/^##PYTHON##/p' <%_sourcedir/rpm.spec)}
 Source100: rpm.spec
+Source1001: packaging/rpm-python.manifest 
 Requires: popt >= 1.10.2.1
 Requires: curl
 Requires: rpm = %{version}
@@ -68,6 +69,7 @@ popd
 rm -rf $RPM_BUILD_ROOT
 
 %files
+%manifest rpm-python.manifest
 %defattr(-,root,root)
 %{_libdir}/python*
 
