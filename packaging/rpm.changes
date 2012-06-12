@@ -1,3 +1,6 @@
+* Fri Jun 08 2012 Elena Reshetova <elena.reshetova@intel.com> - 4.9.0
+- Fixng rpm-security-plugin bugs (PTSEC-19, PTSEC-20, PTSEC-21)
+
 * Tue May 29 2012 Elena Reshetova <elena.reshetova@intel.com> - 4.9.0
 - Fixng rpm-security-plugin dependencies
 - Adding fixes for executables handling in plugin

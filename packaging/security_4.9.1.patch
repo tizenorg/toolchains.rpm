@@ -1020,7 +1020,7 @@ new file mode 100644
 index 0000000..c99a5e8
 --- /dev/null
 +++ b/security/msm.c
-@@ -0,0 +1,869 @@
+@@ -0,0 +1,880 @@
 +/*
 + * This file is part of MSM security plugin
 + * Greatly based on the code of MSSF security plugin
@@ -1546,6 +1546,7 @@ index 0000000..c99a5e8
 +	    } 
 +
 +        rpmlog(RPMLOG_DEBUG, "Starting the security setup...\n");
++        unsigned int smackLabel = 0;
 +
 +	    if (rootSWSource || ctx->mfx->sw_source) {
 +	        if (ctx->mfx->sw_sources) {
@@ -1558,6 +1559,8 @@ index 0000000..c99a5e8
 +		        }
 +	        }
 +     	    if (ctx->mfx->define) {
++               if (ctx->mfx->define->name)
++                    smackLabel = 1;
 +		        ret = msmSetupDefine(ctx->smack_accesses, ctx->mfx);
 +		        if (ret) {
 +		            rpmlog(RPMLOG_ERR, "AC domain setup failed for %s\n",
@@ -1567,6 +1570,8 @@ index 0000000..c99a5e8
 +		        }
 +	        }
 +	        if (ctx->mfx->request) {	
++               if (ctx->mfx->request->ac_domain)
++                    smackLabel = 1;
 +		        ret = msmSetupRequests(ctx->mfx);
 +		        if (ret) {
 +		            rpmlog(RPMLOG_ERR, "Request setup failed for %s\n",
@@ -1594,6 +1599,12 @@ index 0000000..c99a5e8
 +		            msmCancelPackage(ctx->mfx->name);
 +		            goto fail;
 +		        }
++	        }
++/* last check is needed in order to catch in advance the situation when no ac domain defined or requested */
++          if (smackLabel == 0) {
++	            rpmlog(RPMLOG_ERR, "No ac domain defined or requested for package %s. Impossible to assign the package to an ac domain. Stop the installation.\n",   rpmteN(ctx->te));
++		            msmCancelPackage(ctx->mfx->name);
++		            goto fail;
 +	        }
 +	    }
 +
@@ -5167,8 +5178,8 @@ index 0000000..c0850f0
 +			}
 +			len = strlen(filesystem->path);
 +			if (len > match) {
-+			    if (!strncmp(file->path, filesystem->path, len)) {
-+				/* partial match */
++			    if ((!strncmp(file->path, filesystem->path, len)) && (filesystem->type)) {
++				/* partial match and the directory marked as transmutable*/
 +				label = filesystem->label;
 +			    exec_label = filesystem->exec_label;
 +				match = len;
@@ -5176,17 +5187,17 @@ index 0000000..c0850f0
 +			}
 +		    }
 +		}
++       match = 0;
 +	} else 
-+
 +		return -1;
 +    found:
 +	if ((!label) || (!exec_label)) {
 +	    /* no match, use default label of AC domain */
 +	    if (mfx->request) { //AC domain is requested in manifest
-+		if (mfx->request->ac_domain)
++		if (mfx->request->ac_domain) {
 +			if (!label) label = mfx->request->ac_domain;
 +			if (!exec_label) exec_label = mfx->request->ac_domain;
-+		else {
++		} else {
 +			rpmlog(RPMLOG_ERR, "Request for AC domain is empty. Can't identify default file label\n");
 +			return -1;
 +		}
@@ -5253,7 +5264,7 @@ index 0000000..c0850f0
 +				   at_true, file->path, strerror(errno));
 +			}
 +		} else {
-+			rpmlog(RPMLOG_INFO, "An attempt to setup a transmute attr for a non-directory, path %s\n", 
++			rpmlog(RPMLOG_DEBUG, "No setting up of transmute attr for a non-directory, path %s\n", 
 +				   file->path);
 +		}
 +	
