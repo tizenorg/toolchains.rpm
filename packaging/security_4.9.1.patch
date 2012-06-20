@@ -832,17 +832,30 @@ index d13575a..23c3e33 100644
  #include "lib/rpmte_internal.h"
  
  #include "debug.h"
-@@ -909,7 +910,13 @@ int rpmteProcess(rpmte te, pkgGoal goal)
+@@ -897,7 +897,7 @@ int rpmteProcess(rpmte te, pkgGoal goal)
+     /* Only install/erase resets pkg file info */
+     int scriptstage = (goal != PKG_INSTALL && goal != PKG_ERASE);
+     int reset_fi = (scriptstage == 0);
+-    int failed = 1;
++    int failed = 0;
+ 
+     /* Dont bother opening for elements without pre/posttrans scripts */
+     if (goal == PKG_PRETRANS || goal == PKG_POSTTRANS) {
+@@ -909,7 +910,17 @@ int rpmteProcess(rpmte te, pkgGoal goal)
      }
  
      if (rpmteOpen(te, reset_fi)) {
 -	failed = rpmpsmRun(te->ts, te, goal);
 +	/* Call security plugin to set te for next operations */
-+	failed = rpmsecurityCallPrePsm(te);
++   /* But do not call plugin for the pre/posttrans scripts */
++   if (goal != PKG_PRETRANS && goal != PKG_POSTTRANS)
++	   failed = rpmsecurityCallPrePsm(te);
 +	if (!failed) {
 +	    failed = rpmpsmRun(te->ts, te, goal);
 +	    /* Call security plugin to finish any te related tasks */
-+	    failed = rpmsecurityCallPostPsm(te, failed);
++       /* But do not call plugin for the pre/posttrans scripts */
++       if (goal != PKG_PRETRANS && goal != PKG_POSTTRANS)
++	        failed = rpmsecurityCallPostPsm(te, failed);
 +	}
  	rpmteClose(te, reset_fi);
      }
@@ -1324,7 +1337,7 @@ index 0000000..c99a5e8
 +        else { // for now in case default sw source isn't there yet, allow to think that it is coming from root
 +        	current = msmSWSourceTreeTraversal(root->sw_sources, findSWSourceByName, (void *)"root");
 +		    if (current)
-+		        rpmlog(RPMLOG_INFO, "using _root_ sw source now for test‌ing\n");
++		        rpmlog(RPMLOG_INFO, "using _root_ sw source now for testing\n");
 +	    }
 +    }
 +
@@ -1373,8 +1386,8 @@ index 0000000..c99a5e8
 +	    if (current) sw_source = current->name;
 +	    else if (rootSWSource) sw_source = rpmteN(ctx->te);
 +	    if (!sw_source || !headerPutString(h, RPMTAG_SECSWSOURCE, sw_source)) {
-+	        rpmlog(RPMLOG_ERR, "Failed to save sw source for %s\n", 
-+		       rpmteN(ctx->te));
++	        rpmlog(RPMLOG_ERR, "Failed to save sw source for %s, sw_source: %s\n", 
++		       rpmteN(ctx->te), sw_source);
 +	        free(ctx->data);
 +	        ctx = _free(ctx);
 +	    }
@@ -1447,10 +1460,10 @@ index 0000000..c99a5e8
 +	        }
 +	        headerFree(h);
 +	    }
-+	    if (!current) {
++	    /* if (!current) {
 +	        rpmlog(RPMLOG_INFO, "no sw source for removing %s\n", rpmteN(ctx->te));
 +	        goto exit;
-+	    }
++	    }*/
 +    }
 +
 +    if (!current) {
@@ -4063,7 +4076,7 @@ new file mode 100644
 index 0000000..c0850f0
 --- /dev/null
 +++ b/security/msmxattr.c
-@@ -0,0 +1,1291 @@
+@@ -0,0 +1,1296 @@
 +/*
 + * This file is part of MSM security plugin
 + * Greatly based on the code of MSSF security plugin
@@ -4898,6 +4911,11 @@ index 0000000..c0850f0
 +    d_permit_x *d_permit;
 +    ac_domain_x * defined_ac_domain = NULL;
 +    int ret;
++
++    if (!mfx->define->name) {
++			rpmlog(RPMLOG_ERR, "Failed to setup define with empty name\n");
++			return -1;
++    }
 +
 +    /* need to check if domain hasn't been already defined by other package */
 +

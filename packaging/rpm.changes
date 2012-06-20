@@ -1,8 +1,12 @@
+* Wed Jun 20 2012 Elena Reshetova <elena.reshetova@intel.com> - 4.9.0
+- Removing unnessesary PRE/POST PSM calls while executing pre/posttrans scripts
+- Adding the check for the empty domain name in define
+
 * Fri Jun 15 2012 Ryan Ware <ware@linux.intel.com> - 4.9.0
 - Trigger build
 
 * Fri Jun 08 2012 Elena Reshetova <elena.reshetova@intel.com> - 4.9.0
-- Fixng rpm-security-plugin bugs (PTSEC-19, PTSEC-20, PTSEC-21)
+- Fixing rpm-security-plugin bugs (PTSEC-19, PTSEC-20, PTSEC-21)
 
 * Tue May 29 2012 Elena Reshetova <elena.reshetova@intel.com> - 4.9.0
 - Fixng rpm-security-plugin dependencies
