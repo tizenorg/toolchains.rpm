@@ -1,7 +1,7 @@
-Index: rpm-4.9.0/rpmrc.in
+Index: rpm-4.9.1/rpmrc.in
 ===================================================================
---- rpm-4.9.0.orig/rpmrc.in
-+++ rpm-4.9.0/rpmrc.in
+--- rpm-4.9.1.orig/rpmrc.in
++++ rpm-4.9.1/rpmrc.in
 @@ -12,10 +12,10 @@
  # "fat" binary with both archs, for Darwin
  optflags: fat -O2 -g -arch i386 -arch ppc
@@ -49,18 +49,29 @@ Index: rpm-4.9.0/rpmrc.in
  
  optflags: atarist -O2 -g -fomit-frame-pointer
  optflags: atariste -O2 -g -fomit-frame-pointer
-@@ -218,10 +219,10 @@ buildarchtranslate: athlon: i386
- buildarchtranslate: geode: i386
- buildarchtranslate: pentium4: i386
- buildarchtranslate: pentium3: i386
+@@ -209,17 +210,17 @@ os_canon:       MacOSX: macosx	21
+ #############################################################
+ # For a given uname().machine, the default build arch
+ 
+-buildarchtranslate: osfmach3_i686: i386
+-buildarchtranslate: osfmach3_i586: i386
++buildarchtranslate: osfmach3_i686: i586
++buildarchtranslate: osfmach3_i586: i586
+ buildarchtranslate: osfmach3_i486: i386
+ buildarchtranslate: osfmach3_i386: i386
+ 
+-buildarchtranslate: athlon: i386
+-buildarchtranslate: geode: i386
+-buildarchtranslate: pentium4: i386
+-buildarchtranslate: pentium3: i386
 -buildarchtranslate: i686: i386
 -buildarchtranslate: i586: i386
--buildarchtranslate: i486: i386
--buildarchtranslate: i386: i386
++buildarchtranslate: athlon: i586
++buildarchtranslate: geode: i586
++buildarchtranslate: pentium4: i586
++buildarchtranslate: pentium3: i586
 +buildarchtranslate: i686: i586
 +buildarchtranslate: i586: i586
-+buildarchtranslate: i486: i586
-+buildarchtranslate: i386: i586
+ buildarchtranslate: i486: i386
+ buildarchtranslate: i386: i386
  
- buildarchtranslate: alphaev5: alpha
- buildarchtranslate: alphaev56: alpha
