@@ -1,170 +1,25 @@
-* Wed Jun 20 2012 Elena Reshetova <elena.reshetova@intel.com> - 4.9.0
-- Removing unnessesary PRE/POST PSM calls while executing pre/posttrans scripts
-- Adding the check for the empty domain name in define
+* Thu Jun 21 2012 Anas Nashif <anas.nashif@intel.com> c290eab
+- disable perl auto requires
+- fixed optflags
 
-* Fri Jun 15 2012 Ryan Ware <ware@linux.intel.com> - 4.9.0
-- Trigger build
+* Wed Jun 20 2012 Elena, Reshetova <elena.reshetova@intel.com> dd9dc00
+- fixing pre/posttrans scripts calls and plugin
 
-* Fri Jun 08 2012 Elena Reshetova <elena.reshetova@intel.com> - 4.9.0
-- Fixing rpm-security-plugin bugs (PTSEC-19, PTSEC-20, PTSEC-21)
+* Fri Jun 15 2012 Ryan Ware <ryan.r.ware@intel.com> bf466c3
+- Version 4.9.0, release to OBS
 
-* Tue May 29 2012 Elena Reshetova <elena.reshetova@intel.com> - 4.9.0
-- Fixng rpm-security-plugin dependencies
-- Adding fixes for executables handling in plugin
+* Tue Jun 12 2012 Elena, Reshetova <elena.reshetova@intel.com> 733aadb
+- Fixng rpm-security-plugin bugs (PTSEC-19, PTSEC-20, PTSEC-21)
 
-* Tue Apr 24 2012 Elena Reshetova <elena.reshetova@intel.com> - 4.9.0
-- Adding the fixes to rpm security:
- - Handling the policy
- - Log output
- - Handling of exec and normal labels at the same time
+* Wed May 30 2012 Ryan Ware <ryan.r.ware@intel.com> 91057db
+- Add default Smack manifest for rpm.spec
+- Add default Smack manifest for rpm-python.spec
 
-* Tue Jun 07 2011 Anas Nashif <anas.nashif@intel.com> - 4.9.0
-- Cleanup spec file
-- Split locale files
+* Tue May 29 2012 Elena, Reshetova <elena.reshetova@intel.com> 3257c01
+- adding fixes for exec label handling and fixing plugin dependencies
 
-* Fri May 27 2011 Anas Nashif <anas.nashif@intel.com> - 4.9.0
-- Refine script for splitting documentation
-
-* Sat May 21 2011 Anas Nashif <anas.nashif@intel.com> - 4.9.0
-- Update to 4.9.0
-
-* Thu May 19 2011 Anas Nashif <anas.nashif@intel.com> - 4.8.1
-- Split sources of debuginfo packages into debugsource sub packages
-- Added macros to enable splitting of translations and documentation
-- Package only supported languages
-
-* Thu Mar 10 2011 Anas Nashif <anas.nashif@intel.com> - 4.8.1
-- Remove MSSF patches for now
-
-* Fri Feb 25 2011 Ilhan Gurel <ilhan.gurel@nokia.com> - 4.8.1
-- Apply MSSF patches
-- Fixes for Coverity defects
-
-* Fri Feb 04 2011 Anas Nashif <anas.nashif@intel.com> - 4.8.1
-- Apply to upstream patches on top of 4.8.1:
-  - Enable dbenv->failchk() functionality on BDB >= 5.0 too
-  - Eliminate leftover checks for Berkeley DB < 4.3 compatibility
-
-* Mon Jan 24 2011 Carsten Munk <carsten@maemo.org>
-- Merge arch.patch and armv7nhl-armv7hl patch. 
-- Add thumb subarch support, BMC#12622
-
-* Thu Jan 20 2011 Anas Nashif <anas.nashif@intel.com> - 4.8.1
-- [FEA] RPM plug-in support (FEA #9095)
-- Partly implements FEA #9097: Package labeling
-- Add and enable MSSF support
-
-* Tue Jan 11 2011 Carsten Munk <carsten@maemo.org> - 4.8.1
-- armv7hl patch didn't contain %arm addition in macros
-  and installplatform.in changes for some reason. BMC#11429
-
-* Mon Jan 10 2011 Anas Nashif <anas.nashif@intel.com> - 4.8.1
-- Fixed bmc #5546: include rpm.spec in rpm-python
-
-* Fri Dec 17 2010 Carsten Munk <carsten@maemo.org> - 4.8.1
-- Added armv7hl and armv7nhl architectures, fixing BMC#11428
-- Remove project.diff
-
-* Fri Jul 02 2010 Anas Nashif <anas.nashif@intel.com> - 4.8.1
-- Removed unused BuildRequires and macros
-- removed old requirement on moblin-rpm-config in python spec file
-
-* Sun Jun 20 2010 Anas Nashif <anas.nashif@intel.com> - 4.8.1
-- Update to 4.8.1
-  Security:
-    * Remove SUID/SGID bits from hardlinked executables on upgrade too
-      (CVE-2010-2059, RhBug:598775) [1]
-    * Remove POSIX capabilities from hardlinked executables on upgrade and
-      erase (CVE-2010-2059?, RhBug:598775)
-
-  General bugfixes and enhancements:
-    * Fix "empty reply from server" curl-syndrome with URL retrieval,
-      regression introduced in 4.6.0 (RhBug:598988)
-    * Fix transaction hanging on unrelated filesystems (RhBug:547548)
-    * Fix crash on URL retrieve to read-only location on install (RhBug:557118)
-    * Fix verification error code not to depend on verbosity
-      level (RhBug:557101)
-    * Fix return from chroot() on verify (RhBug:590588)
-    * Permit DOS-style line-endings in PGP ASCII armors (RhBug:532992)
-    * Fix :pgpsig header format extension sometimes showing numbers for
-      known hash types (RhBug:587755)
-    * Fix :deptype header format extension failing to show some flag
-      combinations
-    * Fix error message on package conflicts against installed packages
-    * Fix erased packages causing misleading disk-space checking
-      messages (RhBug:561160)
-    * Document --conflicts option in manpage (ticket #126)
-
-  Package building:
-    * Fix %defattr(-) syntax, regression introduced in  (SuseBug:594310)
-    * Fix spec parser eating empty lines in %prep section, regression
-      introduced in 4.6.0 (RhBug:573339)
-    * Fix NOSOURCE/NOPATCH tag generation of nosrc packages, regression
-      introduced in 4.6.0
-    * Fix crash in the spec parser (RhBug:597835, SuseBug:582599)
-    * Fix copying of translated tags into source rpms (RhBug:578299)
-    * Only extract dependencies from .desktop files with Type=Application
-      and Exec= entries (ticket #150)
-    * Work around GNU tar debug output breaking rpmbuild -t (SuseBug:558475)
-
-* Tue Apr 06 2010 Anas Nashif <anas.nashif@intel.com> - 4.8.0
-- Do not use %configure which replaces all variables in the platform
-  macros (BMC#507)
-
-* Fri Mar 26 2010 Arjan van de Ven <arjan@linux.intel.com> - 4.8.0
-- fix the perl dep script to deal with an epoch-less perl
-
-* Thu Mar 04 2010 Anas Nashif <anas.nashif@intel.com> - 4.8.0
-- Detect MeeGo release, set MeeGo as vendor
-
-* Fri Feb 05 2010 Anas Nashif <anas.nashif@intel.com> - 4.8.0
-- Fixed python module build
-
-* Fri Feb 05 2010 Anas Nashif <anas.nashif@intel.com> - 4.8.0
-- Fixed python module build
-
-* Thu Jan 28 2010 Anas Nashif <anas.nashif@intel.com> - 4.8.0
-- Update to 4.8.0 final
-- Remove obsolete patches
-
-* Thu Jan 07 2010 Anas Nashif <anas.nashif@intel.com> - 4.8.0~beta1
-- Update to 4.8.0
-- Use ~ for negative versioning of snpashots and pre-releases
-
-* Sat Nov 14 2009 Anas Nashif <anas.nashif@intel.com> - 4.7.1
-- Applied fixed from FC12
-
-* Wed Sep 23 2009 Anas Nashif <anas.nashif@intel.com> - 4.7.1
-- Update to 4.7.1
-- Applied upstream patches
-
-* Sun Apr 19 2009 Anas Nashif <anas.nashif@intel.com> 4.6.0
-- rpm-build now requires moblin-rpm-config
-
-* Sat Feb 21 2009 Anas Nashif <anas.nashif@intel.com> 4.6.0
-- Remove topdir patch, use default
-
-* Fri Feb 13 2009 Anas Nashif <anas.nashif@intel.com> 4.6.0
-- Update to final 4.6.0
-
-* Sat Dec 20 2008 Arjan van de Ven <arjan@linux.intel.com> 4.6.0
-- Re-fix the pkgconfig bug
-
-* Thu Dec 18 2008 Anas Nashif <anas.nashif@intel.com> 4.6.0
-- Update to 4.6 rc3
-
-* Thu Dec 11 2008 Arjan van de Ven <arjan@linux.intel.com> 4.6.0
-- Fix the pkgconfig Requires: issue as exposed by cairo
-
-* Thu Dec 04 2008 Anas Nashif <anas.nashif@intel.com> 4.6.0
-- Update to 4.6rc2
-
-* Sun Nov 30 2008 Anas Nashif <anas.nashif@intel.com> 4.6.0
-- fix packageconfig auto dependencies
-
-* Mon Nov 24 2008 Anas Nashif <anas.nashif@intel.com> 4.6.0
-- split package to avoid long build time
-
-* Fri Nov 21 2008 Anas Nashif <anas.nashif@intel.com> 4.6.0
-- use external db 4.7
+* Mon May 21 2012 Kim Kibum <kb0929.kim@samsung.com> dec48cf
+- Upload Tizen:Base source
+[ Hyesook Choi ]
+- Initial empty repository
 
