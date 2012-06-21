@@ -1,3 +1,8 @@
+* Thu Jan 17 20:11:27 UTC 2013 - tracy.graydon@intel.com
+- Cherry-pick 6863478fddde08f15ef1368267a9f52d1b3e1ada from 1.0_post branch to fix optflags.patch.
+- Resolve conflicts with changelog and spec file resulting from cherry-pick 
+- Fixes DEVT-41
+
 * Thu Sep 6 2012 Elena Reshetova <elena.reshetova@intel.com> - 4.9.0
 - Changes to the security plugin
   - Using libmagic instead of file utility to check file's content
@@ -67,9 +72,6 @@
 
 * Mon Jun 25 2012 Anas Nashif <anas.nashif@intel.com> 70cc161
 - require bzip2-devel >= 1.0.5
-
-* Thu Jun 21 2012 Anas Nashif <anas.nashif@intel.com> 6863478
-- fixed optflags and perl auto-dependencies
 
 * Thu Jun 21 2012 Anas Nashif <anas.nashif@intel.com> c290eab
 - disable perl auto requires
