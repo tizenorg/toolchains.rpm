@@ -1,3 +1,9 @@
+* Mon Jun 25 2012 Anas Nashif <anas.nashif@intel.com> 70cc161
+- require bzip2-devel >= 1.0.5
+
+* Thu Jun 21 2012 Anas Nashif <anas.nashif@intel.com> 6863478
+- fixed optflags and perl auto-dependencies
+
 * Thu Jun 21 2012 Anas Nashif <anas.nashif@intel.com> c290eab
 - disable perl auto requires
 - fixed optflags

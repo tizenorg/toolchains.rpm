@@ -54,7 +54,7 @@ License:        GPLv2+
 
 Requires:       curl
 
-BuildRequires:  bzip2-devel >= 1.0.6
+BuildRequires:  bzip2-devel >= 1.0.5
 BuildRequires:  elfutils-devel >= 0.112
 BuildRequires:  elfutils-libelf-devel
 BuildRequires:  libfile-devel
