@@ -4,7 +4,7 @@
 
 Name:           rpm
 Version:        4.9.1
-Release:        1
+Release:        4
 Summary:        The RPM package management system
 Url:            http://www.rpm.org/
 Group:          System/Base
