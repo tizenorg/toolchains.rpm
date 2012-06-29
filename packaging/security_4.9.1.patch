@@ -1570,7 +1570,7 @@ index 0000000..c99a5e8
 +                            msmCancelPackage(ctx->mfx->name);
 +		            goto fail;
 +		        }
-+	        }
++	        }           
 +     	    if (ctx->mfx->define) {
 +               if (ctx->mfx->define->name)
 +                    smackLabel = 1;
@@ -1581,7 +1581,7 @@ index 0000000..c99a5e8
 +	            	    msmCancelPackage(ctx->mfx->name);
 +		            goto fail;
 +		        }
-+	        }
++	        }           
 +	        if (ctx->mfx->request) {	
 +               if (ctx->mfx->request->ac_domain)
 +                    smackLabel = 1;
@@ -1797,16 +1797,16 @@ index 0000000..c99a5e8
 +
 +	    if (ctx->mfx->sw_source) {
 +	        if (rpmteDependsOn(ctx->te)) {
-+		    rpmlog(RPMLOG_INFO, "upgrading %s manifest data\n", 
++		        rpmlog(RPMLOG_INFO, "upgrading %s manifest data\n", 
 +		           rpmteN(ctx->te));
 +	        } else {
-+		    rpmlog(RPMLOG_INFO, "removing %s manifest data\n", 
++		        rpmlog(RPMLOG_INFO, "removing %s manifest data\n", 
 +		           rpmteN(ctx->te));
++	            if (ctx->mfx->define || ctx->mfx->provides || ctx->mfx->sw_sources) {
++		            msmRemoveRules(ctx->smack_accesses, ctx->mfx, SmackEnabled);
++	            } 	    
++	            msmRemoveConfig(ctx->mfx);
 +	        }
-+	        if (ctx->mfx->define || ctx->mfx->provides || ctx->mfx->sw_sources) {
-+		        msmRemoveRules(ctx->smack_accesses, ctx->mfx, SmackEnabled);
-+	        } 	    
-+	        msmRemoveConfig(ctx->mfx);
 +	    }
 +
 +   }
@@ -4076,7 +4076,7 @@ new file mode 100644
 index 0000000..c0850f0
 --- /dev/null
 +++ b/security/msmxattr.c
-@@ -0,0 +1,1296 @@
+@@ -0,0 +1,1295 @@
 +/*
 + * This file is part of MSM security plugin
 + * Greatly based on the code of MSSF security plugin
@@ -4860,8 +4860,8 @@ index 0000000..c0850f0
 +		}
 +		if (session) msmSetupDBusConfig(package, session, -1);
 +		if (system) msmSetupDBusConfig(package, system, -1);
++       session = system = NULL;
 +     	}
-+
 +	return 0;
 +
 +}
@@ -4916,7 +4916,6 @@ index 0000000..c0850f0
 +			rpmlog(RPMLOG_ERR, "Failed to setup define with empty name\n");
 +			return -1;
 +    }
-+
 +    /* need to check if domain hasn't been already defined by other package */
 +
 +    HASH_FIND(hh, all_ac_domains, mfx->define->name, strlen(mfx->define->name), defined_ac_domain);
