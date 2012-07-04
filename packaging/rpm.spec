@@ -138,8 +138,6 @@ that are used to build packages using the RPM Package Manager.
 Summary: MSM security plugin for rpm
 Group: Development/Libraries
 Requires: rpm = %{version}-%{release}
-Requires: libsmack
-Requires: libxml2
 Requires: file
 
 %description security-plugin

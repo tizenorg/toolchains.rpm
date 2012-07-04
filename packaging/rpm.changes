@@ -1,3 +1,10 @@
+* Wed Jul 04 2012 Anas Nashif <anas.nashif@intel.com> 6bf3412
+- remove auto dependencies
+
+* Mon Jun 25 2012 Anas Nashif <anas.nashif@intel.com> ab35aed
+- update release
+- require bzip2-devel >= 1.0.5
+
 * Mon Jun 25 2012 Anas Nashif <anas.nashif@intel.com> 70cc161
 - require bzip2-devel >= 1.0.5
 
