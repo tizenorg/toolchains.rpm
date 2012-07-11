@@ -1,3 +1,7 @@
+* Fri Jul 11 2012 Elena Reshetova <elena.reshetova@intel.com> - 4.9.0
+- Fixing the path handling in plugin during labelling phase
+- Fixing the sw source retrival in case verify hook isn't called
+
 * Fri Jul 10 2012 Elena Reshetova <elena.reshetova@intel.com> - 4.9.0
 - Fixing rpm-security-plugin bug PTSEC-22: dbus  manifest is not generated correctly 
 - Fixing rpm-security-plugin bug PTSEC-24: package upgrade removes the file from /etc/smack/accesses.d

@@ -1,8 +1,9 @@
-From ca96df3609c6f1e3a44c09465b9b6e95df6d8130 Mon Sep 17 00:00:00 2001
-From: Elena, Reshetova <elena.reshetova@intel.com>
-Date: Mon, 20 Feb 2012 15:53:32 +0200
+From 5e14250e46ae6c39233e56e8057c94901c034c93 Mon Sep 17 00:00:00 2001
+From: mdemeter <mdemeter@ubuntu.(none)>
+Date: Tue, 10 Jul 2012 17:05:12 -0700
 Subject: [PATCH] Adding security hooks and security plugin
 
+Signed-off-by: mdemeter <mdemeter@ubuntu.(none)>
 ---
  Makefile.am            |    8 +-
  build/files.c          |   13 +-
@@ -14,9 +15,9 @@ Subject: [PATCH] Adding security hooks and security plugin
  lib/rpmfi.h            |    1 +
  lib/rpmscript.c        |    7 +-
  lib/rpmsecurity.c      |  269 ++++++++++
- lib/rpmsecurity.h      |  160 ++++++
+ lib/rpmsecurity.h      |  161 ++++++
  lib/rpmtag.h           |    3 +-
- lib/rpmte.c            |    9 +-
+ lib/rpmte.c            |   16 +-
  lib/rpmts.c            |    3 +
  lib/rpmtypes.h         |    1 +
  lib/transaction.c      |   18 +
@@ -24,14 +25,14 @@ Subject: [PATCH] Adding security hooks and security plugin
  preinstall.am          |    8 +
  security/Makefile.am   |   24 +
  security/Makefile.msm  |   15 +
- security/msm.c         |  869 +++++++++++++++++++++++++++++++
- security/msm.h         |  458 +++++++++++++++++
+ security/msm.c         |  880 +++++++++++++++++++++++++++++++
+ security/msm.h         |  459 +++++++++++++++++
  security/msmconfig.c   |  264 ++++++++++
- security/msmmanifest.c | 1338 ++++++++++++++++++++++++++++++++++++++++++++++++
+ security/msmmanifest.c | 1340 ++++++++++++++++++++++++++++++++++++++++++++++++
  security/msmmatch.c    |   71 +++
- security/msmxattr.c    | 1291 ++++++++++++++++++++++++++++++++++++++++++++++
+ security/msmxattr.c    | 1306 ++++++++++++++++++++++++++++++++++++++++++++++
  security/security.h    |   25 +
- 27 files changed, 4943 insertions(+), 10 deletions(-)
+ 27 files changed, 4979 insertions(+), 11 deletions(-)
  create mode 100644 lib/rpmsecurity.c
  create mode 100644 lib/rpmsecurity.h
  create mode 100644 security/Makefile.am
@@ -137,7 +138,7 @@ index e8e3133..7ed4831 100644
  };
  
 diff --git a/configure.ac b/configure.ac
-index 37dd525..ff8ce94 100644
+index 37dd525..7632627 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -653,6 +653,65 @@ AC_SUBST(WITH_SELINUX_LIB)
@@ -367,7 +368,7 @@ index f24f865..e179450 100644
  }
 diff --git a/lib/rpmsecurity.c b/lib/rpmsecurity.c
 new file mode 100644
-index 0000000..a9c0207
+index 0000000..18e33ab
 --- /dev/null
 +++ b/lib/rpmsecurity.c
 @@ -0,0 +1,269 @@
@@ -395,7 +396,7 @@ index 0000000..a9c0207
 +    rpmRC (*SECURITYHOOK_FSM_OPENED_FUNC)(FSM_t);
 +    rpmRC (*SECURITYHOOK_FSM_UPDATED_FUNC)(FSM_t);
 +    rpmRC (*SECURITYHOOK_FSM_CLOSED_FUNC)(FSM_t, int);
-+    rpmRC (*SECURITYHOOK_POST_PSM_FUNC)(rpmte, int);
++    rpmRC (*SECURITYHOOK_POST_PSM_FUNC)(rpmte, char*, int);
 +    rpmRC (*SECURITYHOOK_POST_TSM_FUNC)(rpmts);
 +    rpmRC (*SECURITYHOOK_CLEANUP_FUNC)(void);
 +    int count;
@@ -569,12 +570,12 @@ index 0000000..a9c0207
 +    return RPMRC_OK;
 +}
 +
-+rpmRC rpmsecurityCallPostPsm(rpmte te, int rpmrc)
++rpmRC rpmsecurityCallPostPsm(rpmte te, char* rootDir, int rpmrc)
 +{
 +    if (securityPlugin) {
-+	rpmRC (*hookFunc)(rpmte, int);
++	rpmRC (*hookFunc)(rpmte, char*, int);
 +	RPMSECURITY_SET_HOOK_FUNC(SECURITYHOOK_POST_PSM_FUNC);
-+	return hookFunc(te, rpmrc);
++	return hookFunc(te, rootDir, rpmrc);
 +    }
 +    return rpmrc;
 +}
@@ -642,10 +643,10 @@ index 0000000..a9c0207
 +}
 diff --git a/lib/rpmsecurity.h b/lib/rpmsecurity.h
 new file mode 100644
-index 0000000..6f3870f
+index 0000000..dc290cd
 --- /dev/null
 +++ b/lib/rpmsecurity.h
-@@ -0,0 +1,160 @@
+@@ -0,0 +1,161 @@
 +#ifndef _SECURITY_H
 +#define _SECURITY_H
 +
@@ -777,10 +778,11 @@ index 0000000..6f3870f
 + * Call the security post psm plugin hook.
 + * This hook is called after the package state machine has finished.
 + * @param te		transaction element in question
++ * @param rootDir		root directory for installation
 + * @param rpmrc		success from RPM
 + * @return		RPMRC_OK on success, RPMRC_FAIL otherwise
 + */
-+rpmRC rpmsecurityCallPostPsm(rpmte te, int rpmrc);
++rpmRC rpmsecurityCallPostPsm(rpmte te, char* rootDir, int rpmrc);
 +
 +/** \ingroup rpmsecurity
 + * Call the security post tsm plugin hook.
@@ -821,18 +823,20 @@ index 50939c6..4916dff 100644
  } rpmTag;
  
 diff --git a/lib/rpmte.c b/lib/rpmte.c
-index d13575a..23c3e33 100644
+index d13575a..2546bd2 100644
 --- a/lib/rpmte.c
 +++ b/lib/rpmte.c
-@@ -14,6 +14,7 @@
+@@ -14,7 +14,9 @@
  #include <rpm/rpmlog.h>
  
  #include "lib/rpmplugins.h"
 +#include "lib/rpmsecurity.h"
  #include "lib/rpmte_internal.h"
++#include "lib/rpmts_internal.h"
  
  #include "debug.h"
-@@ -897,7 +897,7 @@ int rpmteProcess(rpmte te, pkgGoal goal)
+ 
+@@ -895,7 +897,7 @@ int rpmteProcess(rpmte te, pkgGoal goal)
      /* Only install/erase resets pkg file info */
      int scriptstage = (goal != PKG_INSTALL && goal != PKG_ERASE);
      int reset_fi = (scriptstage == 0);
@@ -841,7 +845,7 @@ index d13575a..23c3e33 100644
  
      /* Dont bother opening for elements without pre/posttrans scripts */
      if (goal == PKG_PRETRANS || goal == PKG_POSTTRANS) {
-@@ -909,7 +910,17 @@ int rpmteProcess(rpmte te, pkgGoal goal)
+@@ -909,7 +911,17 @@ int rpmteProcess(rpmte te, pkgGoal goal)
      }
  
      if (rpmteOpen(te, reset_fi)) {
@@ -855,7 +859,7 @@ index d13575a..23c3e33 100644
 +	    /* Call security plugin to finish any te related tasks */
 +       /* But do not call plugin for the pre/posttrans scripts */
 +       if (goal != PKG_PRETRANS && goal != PKG_POSTTRANS)
-+	        failed = rpmsecurityCallPostPsm(te, failed);
++	        failed = rpmsecurityCallPostPsm(te, te->ts->rootDir, failed);
 +	}
  	rpmteClose(te, reset_fi);
      }
@@ -894,7 +898,7 @@ index 28ee5a9..c4da550 100644
  typedef struct rpmgi_s * rpmgi;
  
 diff --git a/lib/transaction.c b/lib/transaction.c
-index 7adf60b..0945bb2 100644
+index 7adf60b..d83007c 100644
 --- a/lib/transaction.c
 +++ b/lib/transaction.c
 @@ -21,6 +21,8 @@
@@ -1030,7 +1034,7 @@ index 0000000..32374be
 +	rm msmmatch *.o
 diff --git a/security/msm.c b/security/msm.c
 new file mode 100644
-index 0000000..c99a5e8
+index 0000000..e683df9
 --- /dev/null
 +++ b/security/msm.c
 @@ -0,0 +1,880 @@
@@ -1042,7 +1046,7 @@ index 0000000..c99a5e8
 + *
 + * Contact: Tero Aho <ext-tero.aho@nokia.com>
 + *
-+ * Copyright (C) 2011 Intel Corporation.
++ * Copyright (C) 2011 -2012 Intel Corporation.
 + *
 + * Contact: Elena Reshetova <elena.reshetova@intel.com>
 + *
@@ -1439,6 +1443,17 @@ index 0000000..c99a5e8
 +	goto exit;
 +    }
 +
++    if (!current) {
++        /* this means that verify hook has not been called */
++        current = msmSWSourceTreeTraversal(root->sw_sources, findSWSourceByName, (void *)"_default_");
++	    if (current)
++	        rpmlog(RPMLOG_INFO, "using _default_ sw source\n");
++        else { 
++            rpmlog(RPMLOG_ERR, "Default source isn't availiable. Package source can't be determined. Abort installation\n");
++	        goto fail;
++	    }
++    }
++
 +    ctx = msmAddTE(te);
 +    if (!ctx) {
 +	    rpmlog(RPMLOG_ERR, "Failed to create security context for %s\n",
@@ -1464,17 +1479,6 @@ index 0000000..c99a5e8
 +	        rpmlog(RPMLOG_INFO, "no sw source for removing %s\n", rpmteN(ctx->te));
 +	        goto exit;
 +	    }*/
-+    }
-+
-+    if (!current) {
-+        /* this means that verify hook has not been called */
-+        current = msmSWSourceTreeTraversal(root->sw_sources, findSWSourceByName, (void *)"_default_");
-+	    if (current)
-+	        rpmlog(RPMLOG_INFO, "using _default_ sw source\n");
-+        else { 
-+            rpmlog(RPMLOG_ERR, "Default source isn't availiable. Package source can't be determined. Abort installation\n");
-+	        goto fail;
-+	    }
 +    }
 +
 +    if (!ctx->data) {
@@ -1755,7 +1759,7 @@ index 0000000..c99a5e8
 +
 +}
 +
-+rpmRC SECURITYHOOK_POST_PSM_FUNC(rpmte te, int rpmrc)
++rpmRC SECURITYHOOK_POST_PSM_FUNC(rpmte te, char* rootDir, int rpmrc)
 +{
 +
 +    int ret = 0;
@@ -1783,7 +1787,7 @@ index 0000000..c99a5e8
 +    if (rpmteType(ctx->te) == TR_ADDED) {
 +	    if (rootSWSource || ctx->mfx->sw_source) {	  
 +	       if (ctx->mfx->files) {
-+		        ret = msmSetFilesystemLabels(ctx->mfx);
++		        ret = msmSetFilesystemLabels(ctx->mfx, rootDir);
 +		        if (ret) {
 +		            rpmlog(RPMLOG_ERR, "Filesystem label setup failed for %s\n",
 +			           rpmteN(ctx->te));
@@ -1916,10 +1920,10 @@ index 0000000..c99a5e8
 +
 diff --git a/security/msm.h b/security/msm.h
 new file mode 100644
-index 0000000..b3ca436
+index 0000000..a25d5d7
 --- /dev/null
 +++ b/security/msm.h
-@@ -0,0 +1,458 @@
+@@ -0,0 +1,459 @@
 +/*
 + * This file is part of MSM security plugin
 + * Greatly based on the code of MSSF security plugin
@@ -1928,7 +1932,7 @@ index 0000000..b3ca436
 + *
 + * Contact: Tero Aho <ext-tero.aho@nokia.com>
 + *
-+ * Copyright (C) 2011 Intel Corporation.
++ * Copyright (C) 2011 - 2012 Intel Corporation.
 + *
 + * Contact: Elena Reshetova <elena.reshetova@intel.com>
 + *
@@ -2303,9 +2307,10 @@ index 0000000..b3ca436
 +/** \ingroup msm
 + * Set Smack object labels based on manifest filesystem tags.
 + * @param mfx	package manifest
++ * @param rootDir	root directory of installation
 + * @return	0 on success, else -1
 + */
-+int msmSetFilesystemLabels(manifest_x *mfx);
++int msmSetFilesystemLabels(manifest_x *mfx, char* rootDir);
 +
 +/** \ingroup msm
 + * Set setup the request section of manifest.
@@ -2380,7 +2385,7 @@ index 0000000..b3ca436
 +#endif
 diff --git a/security/msmconfig.c b/security/msmconfig.c
 new file mode 100644
-index 0000000..063b9eb
+index 0000000..5d78f5d
 --- /dev/null
 +++ b/security/msmconfig.c
 @@ -0,0 +1,264 @@
@@ -2392,7 +2397,7 @@ index 0000000..063b9eb
 + *
 + * Contact: Ilhan Gurel <ilhan.gurel@nokia.com>
 + *
-+ * Copyright (C) 2011 Intel Corporation.
++ * Copyright (C) 2011 - 2012 Intel Corporation.
 + *
 + * Contact: Elena Reshetova <elena.reshetova@intel.com>
 + *
@@ -2650,7 +2655,7 @@ index 0000000..063b9eb
 +
 diff --git a/security/msmmanifest.c b/security/msmmanifest.c
 new file mode 100644
-index 0000000..418a1bd
+index 0000000..ebf00ca
 --- /dev/null
 +++ b/security/msmmanifest.c
 @@ -0,0 +1,1340 @@
@@ -2662,7 +2667,7 @@ index 0000000..418a1bd
 + *
 + * Contact: Tero Aho <ext-tero.aho@nokia.com>
 + *
-+ * Copyright (C) 2011 Intel Corporation.
++ * Copyright (C) 2011 -2012 Intel Corporation.
 + *
 + * Contact: Elena Reshetova <elena.reshetova@intel.com>
 + *
@@ -4073,10 +4078,10 @@ index 0000000..0fcf8b9
 +
 diff --git a/security/msmxattr.c b/security/msmxattr.c
 new file mode 100644
-index 0000000..c0850f0
+index 0000000..ce4c3e8
 --- /dev/null
 +++ b/security/msmxattr.c
-@@ -0,0 +1,1295 @@
+@@ -0,0 +1,1307 @@
 +/*
 + * This file is part of MSM security plugin
 + * Greatly based on the code of MSSF security plugin
@@ -4085,7 +4090,7 @@ index 0000000..c0850f0
 + *
 + * Contact: Tero Aho <ext-tero.aho@nokia.com>
 + *
-+ * Copyright (C) 2011 Intel Corporation.
++ * Copyright (C) 2011 - 2012 Intel Corporation.
 + *
 + * Contact: Elena Reshetova <elena.reshetova@intel.com>
 + *
@@ -5167,7 +5172,7 @@ index 0000000..c0850f0
 + pclose(pipe);
 + return result;
 +}
-+int msmSetFilesystemLabels(manifest_x *mfx) {
++int msmSetFilesystemLabels(manifest_x *mfx, char* rootDir) {
 +    file_x *file;
 +    provide_x *provide;
 +    filesystem_x *filesystem;
@@ -5231,42 +5236,49 @@ index 0000000..c0850f0
 +			return -1;
 +	     }
 +	} 
-+         
++ 
++    	char* fullPath = NULL;
++    	if ((rootDir) && (strcmp(rootDir, "/") != 0)) {   
++        	fullPath = calloc(strlen(rootDir) + strlen(file->path), sizeof(char));
++		snprintf(fullPath, strlen(rootDir) + strlen(file->path), "%s%s", rootDir, file->path + 1);
++   		rpmlog(RPMLOG_DEBUG, "Full path %s, file->path: %s, rootDir: %s\n", fullPath, file->path, rootDir);
++    	} else
++       	fullPath = file->path;
 +
-+	fd = open(file->path, O_RDONLY);
++	fd = open(fullPath, O_RDONLY);
 +	if (fd == -1) {
 +	    rpmlog(RPMLOG_ERR, "Failed to open %s: %s\n", 
-+		   file->path, strerror(errno));
-+	    continue;
++		   fullPath, strerror(errno));
++	    goto next1;
 +	}
 +	ret = fstat(fd, &st);
 +	if (ret == -1) {
 +	    rpmlog(RPMLOG_ERR, "fstat failed for %s: %s\n", 
-+		   file->path, strerror(errno));
++		   fullPath, strerror(errno));
 +	    goto next;
 +	}
 +	if (file->ino && (st.st_ino != file->ino)) {
-+	    rpmlog(RPMLOG_ERR, "Inode check failed for %s\n", file->path);
++	    rpmlog(RPMLOG_ERR, "Inode check failed for %s\n", fullPath);
 +	    goto next;
-+	}	    
++	} 	    
 +
-+	rpmlog(RPMLOG_INFO, "setting SMACK64 %s for %s\n", label, file->path);
++	rpmlog(RPMLOG_INFO, "setting SMACK64 %s for %s\n", label, fullPath);
 +	ret = fsetxattr(fd, SMACK64, label, strlen(label), 0);
 +	if (ret < 0) {
 +	    rpmlog(RPMLOG_ERR, "Failed to set SMACK64 %s for %s: %s\n", 
-+		   label, file->path, strerror(errno));
++		   label, fullPath, strerror(errno));
 +	}
 +
-+	if ((is_executable(file->path)) == 0) {
++	if ((is_executable(fullPath)) == 0) {
 +		if ((exec_label) && (strcmp(exec_label, "none") == 0)) {
 +			// do not set SMACK64EXEC
-+			rpmlog(RPMLOG_INFO, "not setting SMACK64EXEC for %s as requested in manifest\n", file->path);
++			rpmlog(RPMLOG_INFO, "not setting SMACK64EXEC for %s as requested in manifest\n", fullPath);
 +		} else {
-+			rpmlog(RPMLOG_INFO, "setting SMACK64EXEC %s for %s\n", exec_label, file->path);
++			rpmlog(RPMLOG_INFO, "setting SMACK64EXEC %s for %s\n", exec_label, fullPath);
 +			ret = fsetxattr(fd, SMACK64EXEC, exec_label, strlen(exec_label), 0);
 +			if (ret < 0) {
 +		    		rpmlog(RPMLOG_ERR, "Failed to set SMACK64EXEC %s for %s: %s\n", 
-+			   exec_label, file->path, strerror(errno));
++			   exec_label, fullPath, strerror(errno));
 +			}
 +		}
 +	}
@@ -5274,23 +5286,28 @@ index 0000000..c0850f0
 +	if (type) { //marked as transmutable
 +		if (S_ISDIR(st.st_mode)) { //check that it is a directory
 +			char at_true[]="TRUE";
-+			rpmlog(RPMLOG_INFO, "setting SMACK64TRANSMUTE %s for %s\n", at_true, file->path);
++			rpmlog(RPMLOG_INFO, "setting SMACK64TRANSMUTE %s for %s\n", at_true, fullPath);
 +			ret = fsetxattr(fd, SMACK64TRANSMUTE, at_true, strlen(at_true), 0);
 +			if (ret < 0) {
 +			    rpmlog(RPMLOG_ERR, "Failed to set SMACK64TRANSMUTE %s for %s: %s\n", 
-+				   at_true, file->path, strerror(errno));
++				   at_true, fullPath, strerror(errno));
 +			}
 +		} else {
 +			rpmlog(RPMLOG_DEBUG, "No setting up of transmute attr for a non-directory, path %s\n", 
-+				   file->path);
++				   fullPath);
 +		}
 +	
 +	}
 +
 +   next:
 +	close(fd);
++   next1:
 +	label = NULL;
-+   exec_label = NULL;
++   	exec_label = NULL;
++    	if ((rootDir) && (strcmp(rootDir, "/") != 0)) {
++        	free(fullPath);
++	 	fullPath = NULL;
++    	}
 +
 +    }
 +    return 0;
@@ -5372,10 +5389,9 @@ index 0000000..c0850f0
 +    }
 +    return NULL;
 +}
-+
 diff --git a/security/security.h b/security/security.h
 new file mode 100644
-index 0000000..1b141ef
+index 0000000..f4957e6
 --- /dev/null
 +++ b/security/security.h
 @@ -0,0 +1,25 @@
@@ -5395,7 +5411,7 @@ index 0000000..1b141ef
 +rpmRC SECURITYHOOK_PRE_TSM_FUNC(rpmts _ts);
 +rpmRC SECURITYHOOK_POST_TSM_FUNC(rpmts _ts);
 +rpmRC SECURITYHOOK_PRE_PSM_FUNC(rpmte _te);
-+rpmRC SECURITYHOOK_POST_PSM_FUNC(rpmte _te, int rpmrc);
++rpmRC SECURITYHOOK_POST_PSM_FUNC(rpmte _te, char * rootDir, int rpmrc);
 +rpmRC SECURITYHOOK_SCRIPT_EXEC_FUNC(ARGV_const_t argv);
 +rpmRC SECURITYHOOK_FSM_OPENED_FUNC(FSM_t fsm);
 +rpmRC SECURITYHOOK_FSM_UPDATED_FUNC(FSM_t fsm);
@@ -5405,5 +5421,5 @@ index 0000000..1b141ef
 +rpmRC SECURITYHOOK_FILE_CONFLICT_FUNC(rpmts ts, rpmte te, rpmfi fi,
 +				      Header oldHeader, rpmfi oldFi, int rpmrc);
 -- 
-1.7.4.1
+1.7.9.5
 
