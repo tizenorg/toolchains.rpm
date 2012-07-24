@@ -1,3 +1,9 @@
+* Fri Jul 24 2012 Elena Reshetova <elena.reshetova@intel.com> - 4.9.0
+- Fixing the handling of all_packages uthash list
+- Changing the free functions to use msmFreePointer in order to delete safely
+- Changing the request handling in order to allow only one domain name inside a request section
+- Changing the allowed length of the label or domain to be 255
+
 * Fri Jul 12 2012 Elena Reshetova <elena.reshetova@intel.com> - 4.9.0
 - Fixing the path handling in plugin during labelling phase
 - Fixing the sw source retrival in case verify hook isn't called
