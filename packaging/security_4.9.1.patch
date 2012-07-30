@@ -1164,7 +1164,7 @@ diff -Nuarp rpm/security/msm.c rpm-security/security/msm.c
 +	        /* Change sw source to the higher ranked one */
 +	        fc->sw_source = sw_source;
 +	    }
-+	    path = msmFreePointer((void *)path);
++	    msmFreePointer((void**)&path);
 +    }
 +    
 +    if (rpmtsFilterFlags(ts) & RPMPROB_FILTER_REPLACEOLDFILES) {
@@ -1325,8 +1325,8 @@ diff -Nuarp rpm/security/msm.c rpm-security/security/msm.c
 +	    if (!sw_source || !headerPutString(h, RPMTAG_SECSWSOURCE, sw_source)) {
 +	        rpmlog(RPMLOG_ERR, "Failed to save sw source for %s, sw_source: %s\n", 
 +		       rpmteN(ctx->te), sw_source);
-+	        ctx->data = msmFreePointer((void*)ctx->data);
-+	        ctx = msmFreePointer((void*)ctx);
++	        msmFreePointer((void**)&ctx->data);
++	        msmFreePointer((void**)&ctx);
 +	    }
 +    }
 +
@@ -1425,8 +1425,8 @@ diff -Nuarp rpm/security/msm.c rpm-security/security/msm.c
 +	mfx->name = strdup(rpmteN(ctx->te));
 +        mfx->request = calloc(1, sizeof(request_x));
 +	if (!mfx->request) {
-+        	mfx->name = msmFreePointer((void *)mfx->name);
-+	     	mfx = msmFreePointer((void*)mfx);
++        	msmFreePointer((void**)&mfx->name);
++	     	msmFreePointer((void**)&mfx);
 +        	goto fail;
 +        }
 +        mfx->request->ac_domain = strdup(ownSmackLabel);
@@ -1589,7 +1589,7 @@ diff -Nuarp rpm/security/msm.c rpm-security/security/msm.c
 +
 + exit: /* success, continue rpm operation */
 +	context = ctx;
-+	xml = msmFreePointer((void*)xml);
++	msmFreePointer((void**)&xml);
 +
 +	return rc;
 +}
@@ -1791,11 +1791,11 @@ diff -Nuarp rpm/security/msm.c rpm-security/security/msm.c
 +
 +    while (ctx) {
 +	    packagecontext *next = ctx->next;
-+	    ctx->data = msmFreePointer((void*)ctx->data);
++	    msmFreePointer((void**)&ctx->data);
 +	    ctx->mfx = msmFreeManifestXml(ctx->mfx);
-+	    ctx->path = msmFreePointer((void *)ctx->path);
++	    msmFreePointer((void**)&ctx->path);
 +	    if (ctx->smack_accesses) smack_accesses_free(ctx->smack_accesses);
-+	    ctx = msmFreePointer((void*)ctx);
++	    msmFreePointer((void**)&ctx);
 +	    ctx = next;
 +    }
 +
@@ -1807,6 +1807,8 @@ diff -Nuarp rpm/security/msm.c rpm-security/security/msm.c
 +rpmRC SECURITYHOOK_CLEANUP_FUNC(void)
 +{
 +
++    msmFreeInternalHashes(); // free hash structures first
++
 +    if (root) {
 +	    msmSaveDeviceSecPolicyXml(root);
 +	    if (!rootSWSource) 	root = msmFreeManifestXml(root);
@@ -1817,18 +1819,16 @@ diff -Nuarp rpm/security/msm.c rpm-security/security/msm.c
 +    contextsHead = contextsTail = msmFree(contextsHead);
 +    contextsHead = contextsTail = NULL;
 +
-+    //msmFreeInternalHashes();
-+
 +    if (allfileconflicts) {
 +	    fileconflict *fc, *temp;
 +	    HASH_ITER(hh, allfileconflicts, fc, temp) {
 +	        HASH_DELETE(hh, allfileconflicts, fc);
-+	        fc->path = msmFreePointer((void *)fc->path);
-+	       fc = msmFreePointer((void*)fc);
++	        msmFreePointer((void**)&fc->path);
++	        msmFreePointer((void**)&fc);
 +	    }
 +    }
 +
-+    ownSmackLabel = msmFreePointer((void*)ownSmackLabel);
++    msmFreePointer((void**)&ownSmackLabel);
 +
 +    return RPMRC_OK;
 +}
@@ -1871,12 +1871,12 @@ diff -Nuarp rpm/security/msm.c rpm-security/security/msm.c
 +    return match ? path : NULL;
 +}
 +
-+void *msmFreePointer(void* ptr)
++void msmFreePointer(void** ptr)
 +{
-+	if (ptr)
-+		free(ptr);
-+	ptr = NULL;
-+	return ptr;
++	if (*ptr)
++		free(*ptr);
++	*ptr = NULL;
++	return;
 +}
 diff -Nuarp rpm/security/msmconfig.c rpm-security/security/msmconfig.c
 --- rpm/security/msmconfig.c	1970-01-01 02:00:00.000000000 +0200
@@ -1945,7 +1945,7 @@ diff -Nuarp rpm/security/msmconfig.c rpm-security/security/msmconfig.c
 +        if ((enc = b64encode(keyinfo->keydata, keyinfo->keylen, -1)) != NULL) {
 +            xmlAddChild(node, xmlNewText(BAD_CAST "\n"));        
 +            xmlAddChild(node, xmlNewText(BAD_CAST enc));
-+            enc = msmFreePointer((void*)enc);   
++            msmFreePointer((void**)&enc);   
 +        }
 +
 +        xmlAddChild(parent, node);
@@ -2440,10 +2440,10 @@ diff -Nuarp rpm/security/msm.h rpm-security/security/msm.h
 +
 +/** \ingroup msm
 + * Frees the given pointer and sets it to NULL
-+ * @param ptr	pointer to be freed
-+ * @return	NULL pointer
++ * @param ptr	address of pointer to be freed
++ * @return	
 + */
-+void *msmFreePointer(void *ptr);
++void msmFreePointer(void **ptr);
 +
 +/** \ingroup msm
 + * Process package security manifest.
@@ -2618,7 +2618,7 @@ diff -Nuarp rpm/security/msm.h rpm-security/security/msm.h
 diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 --- rpm/security/msmmanifest.c	1970-01-01 02:00:00.000000000 +0200
 +++ rpm-security/security/msmmanifest.c	2012-07-24 12:27:43.027952214 +0300
-@@ -0,0 +1,1343 @@
+@@ -0,0 +1,1459 @@
 +/*
 + * This file is part of MSM security plugin
 + * Greatly based on the code of MSSF security plugin
@@ -2700,11 +2700,11 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +{
 +	if (ac_domain) {
 +	    ac_domain_x *prev = ac_domain->prev;
-+	    ac_domain->name = msmFreePointer((void *)ac_domain->name);
-+	    ac_domain->type = msmFreePointer((void *)ac_domain->type);
-+	    ac_domain->match = msmFreePointer((void *)ac_domain->match);
-+	    ac_domain->plist = msmFreePointer((void *)ac_domain->plist);
-+	    ac_domain = msmFreePointer((void *)ac_domain);
++	    msmFreePointer((void**)&ac_domain->name);
++	    msmFreePointer((void**)&ac_domain->type);
++	    msmFreePointer((void**)&ac_domain->match);
++	    msmFreePointer((void**)&ac_domain->plist);
++	    msmFreePointer((void**)&ac_domain);
 +	    return prev;
 +	} else return NULL;
 +}
@@ -2725,8 +2725,8 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +	        return annotation;
 +	    }
 +    }
-+    name = msmFreePointer((void *)name);
-+    value = msmFreePointer((void *)value);
++    msmFreePointer((void**)&name);
++    msmFreePointer((void**)&value);
 +    return NULL;
 +}
 +
@@ -2910,10 +2910,12 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +	    return ac_domain;
 +	}
 +    }
-+    name = msmFreePointer((void *)name);
-+    match = msmFreePointer((void *)match);
-+    policy = msmFreePointer((void*)policy);
-+    plist = msmFreePointer((void*)plist);
++    rpmlog(RPMLOG_ERR, "Mandatory argument is missing for ac domain definition\n");
++    rpmlog(RPMLOG_ERR, "ac_domain %s match %s policy %s plist %s\n", ASCII(name), ASCII(match), ASCII(policy), ASCII(plist));
++    msmFreePointer((void**)&name);
++    msmFreePointer((void**)&match);
++    msmFreePointer((void**)&policy);
++    msmFreePointer((void**)&plist);
 +    return NULL;
 +}
 +
@@ -2926,7 +2928,7 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +    exec_label = xmlTextReaderGetAttribute(reader, XMLCHAR("exec_label"));
 +    type = xmlTextReaderGetAttribute(reader, XMLCHAR("type"));
 +
-+    rpmlog(RPMLOG_DEBUG, "filesystem %s %s %s %s\n", 
++    rpmlog(RPMLOG_DEBUG, "filesystem path %s label %s exec label %s type %s\n", 
 +	   ASCII(path), ASCII(label), ASCII(exec_label), ASCII(type));
 +
 +   if (path && (label || exec_label)) {
@@ -2934,6 +2936,7 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +	    rpmlog(RPMLOG_ERR, "An attempt to setup both label and exec_label on file. You should not need to do it.\n");
 +	    goto exit;
 +	} */
++
 +	filesystem_x *filesystem = calloc(1, sizeof(filesystem_x));
 +	if (filesystem) {
 +	    filesystem->path = ASCII(path);
@@ -2942,14 +2945,17 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +	    filesystem->type = ASCII(type);
 +	    return filesystem;
 +	}
++
++    } else {
++	rpmlog(RPMLOG_ERR, "Mandatory argument is missing for filesystem assign request\n");
++	rpmlog(RPMLOG_ERR, "filesystem path %s label %s exec label %s\n", 
++	   ASCII(path), ASCII(label), ASCII(exec_label));
 +    }
 +
-+exit:
-+
-+    path = msmFreePointer((void *)path);
-+    label = msmFreePointer((void *)label);
-+    exec_label = msmFreePointer((void *)exec_label);
-+    type = msmFreePointer((void *)type);
++    msmFreePointer((void**)&path);
++    msmFreePointer((void**)&label);
++    msmFreePointer((void**)&exec_label);
++    msmFreePointer((void**)&type);
 +    return NULL;
 +}
 +
@@ -2987,7 +2993,7 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +		    ac_domain->name = malloc(strlen(mfx->name) + 2 +
 +					      strlen(name) + 1);
 +		    sprintf((char *)ac_domain->name, "%s::%s", mfx->name, name);
-+		    name = msmFreePointer((void *)name);
++		    msmFreePointer((void**)&name);
 +		}
 +	    } else return -1;
 +
@@ -2996,7 +3002,7 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +	    rpmlog(RPMLOG_DEBUG, "for %s\n", ASCII(origin));
 +	    if (!origin) return -1;
 +	    if (provide->origin) { 
-+		origin = msmFreePointer((void *)origin);
++		msmFreePointer((void**)&origin);
 +		return -1;
 +	    }
 +	    provide->origin = ASCII(origin);
@@ -3011,7 +3017,10 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +	    	LISTADD(provide->filesystems, filesystem);
 +	    } else return -1;
 +
-+	} else return -1;
++	} else {
++		rpmlog(RPMLOG_ERR, "No allowed element in assign section: %s\n", ASCII(node));
++		return -1;
++    	}
 +
 +	if (ret < 0) return ret;
 +    }
@@ -3059,9 +3068,9 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +    int ret, depth, requestPresent = 0;
 +
 +    rpmlog(RPMLOG_DEBUG, "request \n");
-+
 +    depth = xmlTextReaderDepth(reader);
 +    while ((ret = msmNextChildElement(reader, depth))) {
++
 +	node = xmlTextReaderConstName(reader);
 +	if (!node) return -1;
 +
@@ -3075,19 +3084,61 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +		if (name) {
 +			request->ac_domain = ASCII(name);
 +			requestPresent = 1;
-+		} else return -1;
-+
-+	    } else if (!strcmp(ASCII(node), "description")) {
-+			continue;
-+	    } else return -1;
++		} else {
++			rpmlog(RPMLOG_ERR, "No ac domain name defined in request.\n");
++			return -1;
++		}
++	    } else {
++		rpmlog(RPMLOG_ERR, "Not allowed element in request section: %s\n", ASCII(node));
++		return -1;
++	    }
 +    }
 +    
 +    return ret;
 +}
 +
++static int msmVerifyAccessType(const char* type){
++	int res = 0, idx = 0;
++
++	if (type) {
++	    while ( type[idx] != '\0' ){
++		if ((type[idx] !='a') && (type[idx]!='r') && (type[idx]!='w') &&
++		    (type[idx]!='x') && (type[idx]!='t') && (type[idx] !='-')) {
++		    rpmlog(RPMLOG_ERR, "Not allowed character in access type: %s\n", type);
++		    res = -1;
++		    break;
++		}
++		idx++;
++	    }
++	} else return -1; 
++	return res;
++}
++
++static int msmVerifySmackLabel(const char* type){
++	int res = 0, idx = 0;
++
++	if (type) {
++ 	    if (type[0] == '-') {
++		rpmlog(RPMLOG_ERR, "Dash is not allowed as first character in smack label: %s\n", type);
++		return -1;
++	    }
++	    while ( type[idx] != '\0' ){
++		if ((type[idx] =='\"') || (type[idx] =='\'') || (type[idx] =='/') ||
++		    (type[idx] =='\\') || (type[idx] > '~') || (type[idx] <= ' ')) {
++		    rpmlog(RPMLOG_ERR, "Not allowed character in smack label: %s, position:%d \n", type, idx);
++		    res = -1;
++		    break;
++		}
++		idx++;
++	    }
++	} else return -1; 
++
++	return res;
++}
++
 +static int msmProcessDRequest(xmlTextReaderPtr reader, define_x *define) 
 +{
-+    const xmlChar *node, *label, *type;
++    const xmlChar *node = NULL, *label = NULL, *type = NULL;
 +    int ret, depth;
 +
 +    rpmlog(RPMLOG_DEBUG, "request\n");
@@ -3100,38 +3151,48 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +	if (!strcmp(ASCII(node), "smack")) {
 +	    label = xmlTextReaderGetAttribute(reader, XMLCHAR("request"));
 +	    type = xmlTextReaderGetAttribute(reader, XMLCHAR("type"));
-+	    rpmlog(RPMLOG_DEBUG, "request %s type %s\n", ASCII(label), ASCII(type));
++	    rpmlog(RPMLOG_DEBUG, "request label %s type %s\n", ASCII(label), ASCII(type));
 +	    if (label && type) {
++		    if (msmVerifyAccessType(ASCII(type)) < 0) {
++		    	msmFreePointer((void**)&label);
++		    	msmFreePointer((void**)&type);	
++			return -1; 
++		    }
 +		    d_request_x *request = calloc(1, sizeof(d_request_x));
 +		    if (request) {
 +			request->label_name = ASCII(label);
 +			request->ac_type = ASCII(type);
 +			LISTADD(define->d_requests, request);
 +		    } else {
-+			label = msmFreePointer((void *)label);
-+		   	type = msmFreePointer((void *)type);
++			msmFreePointer((void**)&label);
++		   	msmFreePointer((void**)&type);
 +			return -1;
 +		    }
 +
 +	    } else  {
-+		    label = msmFreePointer((void *)label);
-+		    type = msmFreePointer((void *)type);	
++		    rpmlog(RPMLOG_ERR, "One of the mandatory arguments for domain request is missing. Abort installation\n");
++		    rpmlog(RPMLOG_ERR, "smack request label %s type %s\n", ASCII(label), ASCII(type));
++		    msmFreePointer((void**)&label);
++		    msmFreePointer((void**)&type);	
 +		    return -1;
 +	    }
-+	} else if (!strcmp(ASCII(node), "description")) {
-+		continue;
-+	} else return -1;
++	} else {
++		rpmlog(RPMLOG_ERR, "Not allowed element in domain request section: %s\n", ASCII(node));
++		return -1;
++	}
 +    }
++
 +    return ret;
 +}
++
 +static int msmProcessDPermit(xmlTextReaderPtr reader, define_x *define) 
 +{
 +    const xmlChar *node, *label, *type;
 +    int ret, depth;
 +
 +    rpmlog(RPMLOG_DEBUG, "permit\n");
-+
 +    depth = xmlTextReaderDepth(reader);
++
 +    while ((ret = msmNextChildElement(reader, depth))) {
 +	node = xmlTextReaderConstName(reader);
 +	if (!node) return -1;
@@ -3142,33 +3203,42 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +	    rpmlog(RPMLOG_DEBUG, "permit %s type %s\n", ASCII(label), ASCII(type));
 +
 +	    if (label && type) {
++		    if (msmVerifyAccessType(ASCII(type)) < 0) {
++		    	msmFreePointer((void**)&label);
++		    	msmFreePointer((void**)&type);	
++			return -1; 
++		    }
 +		    d_permit_x *permit = calloc(1, sizeof(d_permit_x));
 +		    if (permit) {
 +			permit->label_name = ASCII(label);
 +			permit->ac_type = ASCII(type);
 +			LISTADD(define->d_permits, permit);
 +		    } else {
-+			label = msmFreePointer((void *)label);
-+		   	type = msmFreePointer((void *)type);
++			msmFreePointer((void**)&label);
++		   	msmFreePointer((void**)&type);
 +			return -1;
 +		    }
 +
 +	    } else  {
-+		    label = msmFreePointer((void *)label);
-+		    type = msmFreePointer((void *)type);	
++		    rpmlog(RPMLOG_ERR, "One of the mandatory arguments for domain permit is missing. Abort installation\n");
++		    rpmlog(RPMLOG_ERR, "smack permit label %s type %s\n", ASCII(label), ASCII(type));
++		    msmFreePointer((void**)&label);
++		    msmFreePointer((void**)&type);	
 +		    return -1;
 +	    }
-+	} else if (!strcmp(ASCII(node), "description")) {
-+		continue;
-+	} else return -1;
++	} else {
++		rpmlog(RPMLOG_ERR, "Not allowed element in domain permit section: %s\n", ASCII(node));
++		return -1;
++	}
 +    }
++
 +    return ret;
 +}
 +
 +static int msmProcessDProvide(xmlTextReaderPtr reader, define_x *define) 
 +{
 +    const xmlChar *node, *label;
-+    int ret, depth;
++    int ret = 0, depth;
 +    char sep[]= "::";
 +
 +    rpmlog(RPMLOG_DEBUG, "provide\n");
@@ -3181,58 +3251,78 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +	if (!strcmp(ASCII(node), "label")) {
 +	    label = xmlTextReaderGetAttribute(reader, XMLCHAR("name"));
 +	    rpmlog(RPMLOG_DEBUG, "label %s \n", ASCII(label));
++
 +	    if (label) {
-+		     if (strlen(ASCII(label)) > SMACK_LABEL_LENGTH) { //smack limitation on lenght
++		    if (strlen(ASCII(label)) > SMACK_LABEL_LENGTH) { //smack limitation on lenght
 +			rpmlog(RPMLOG_ERR, "Label name  %s lenght %d is longer than defined SMACK_LABEL_LENGTH. Can't define such domain\n", 
 +													label, strlen(ASCII(label)));
-+			label = msmFreePointer((void *)label);
++    			msmFreePointer((void**)&label);
 +			return -1;
 +		    }
++
 +		    char *tmp = calloc(strlen(define->name) + 3, sizeof (const char));
 +		    if (!tmp) {
-+		         label = msmFreePointer((void *)label);
-+			 return -1;
++			msmFreePointer((void**)&label);
++			return -1;
 +		    }
++
 +		    strncpy(tmp, define->name, strlen(define->name));
 +		    strncpy(tmp + strlen(define->name), sep, 2);
++
 +		    if (strstr(ASCII(label), tmp) != ASCII(label)) { //label name should be prefixed by domain name and "::"
 +			rpmlog(RPMLOG_ERR, "Label name %s isn't prefixed by domain name %s. Can't define such domain\n", ASCII(label), define->name);
-+			label = msmFreePointer((void *)label);
++			msmFreePointer((void**)&label);
++		    	msmFreePointer((void**)&tmp);
 +			return -1;
 +		    } 
-+		    tmp = msmFreePointer((void*)tmp);
++
++		    msmFreePointer((void**)&tmp);
++
++		    if (msmVerifySmackLabel(ASCII(label) + strlen(define->name) + 2) < 0) {
++			msmFreePointer((void**)&label);
++			return -1;
++		    }
 +		    d_provide_x *provide = calloc(1, sizeof(d_provide_x));
 +		    if (provide) {
 +			provide->label_name = ASCII(label);
 +			LISTADD(define->d_provides, provide);
 +		    } else {
-+			label = msmFreePointer((void *)label);
++			msmFreePointer((void**)&label);
 +			return -1;
 +		    }
 +
 +	    } else  {
-+		    return -1;
++		    rpmlog(RPMLOG_INFO, "Label name is empty. Label provide is ignored\n");
++		    continue;
 +	    }
-+	} else if (!strcmp(ASCII(node), "description")) {
-+		continue;
-+	} else return -1;
++	} else {
++		rpmlog(RPMLOG_ERR, "Not allowed element in domain provide section: %s\n", ASCII(node));
++		return -1;
++	}
 +    }
++
 +    return ret;
 +}
 +
 +static int msmProcessDefine(xmlTextReaderPtr reader, define_x *define, manifest_x *mfx, sw_source_x *current) 
 +{
 +    const xmlChar *node, *name, *policy, *plist;
-+    int ret, depth;
++    int ret, depth, domainPresent = 0;
 +
 +    rpmlog(RPMLOG_DEBUG, "define\n");
 +
 +    depth = xmlTextReaderDepth(reader);
++
 +    while ((ret = msmNextChildElement(reader, depth))) {
 +	    node = xmlTextReaderConstName(reader);
 +	    if (!node) return -1;
 +
 +	    if (!strcmp(ASCII(node), "domain")) {
++		    if (domainPresent) {
++			rpmlog(RPMLOG_ERR, "Only one domain is allowed per define section. Abort installation\n");
++			return -1;
++		    }
++		    domainPresent = 1;
 +		    name = xmlTextReaderGetAttribute(reader, XMLCHAR("name"));
 +		    policy = xmlTextReaderGetAttribute(reader, XMLCHAR("policy"));
 +		    plist = xmlTextReaderGetAttribute(reader, XMLCHAR("plist"));
@@ -3240,19 +3330,29 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +			   ASCII(name), ASCII(policy), ASCII(plist));
 +
 +		    if (name) {
++			    if (strlen(ASCII(name)) > SMACK_LABEL_LENGTH) { //smack limitation on lenght
++				rpmlog(RPMLOG_ERR, "Domain name  %s lenght is longer than defined SMACK_LABEL_LENGTH. Can't define such domain\n", define->name);
++    			    	msmFreePointer((void**)&name);
++    			    	msmFreePointer((void**)&policy);		
++    			    	msmFreePointer((void**)&plist);
++			    	return -1; 
++			    }
++                	    if (strlen(ASCII(name)) == 0){
++				rpmlog(RPMLOG_ERR, "An attempt to define an empty domain name. Can't define such domain\n");
++    			    	msmFreePointer((void**)&name);
++    			    	msmFreePointer((void**)&policy);		
++    			    	msmFreePointer((void**)&plist);
++			    	return -1; 
++			    }
++
++                	    if (msmVerifySmackLabel(ASCII(name)) < 0){
++    			    	msmFreePointer((void**)&name);
++    			    	msmFreePointer((void**)&policy);		
++    			    	msmFreePointer((void**)&plist);
++			    	return -1; 
++			    }
++
 +			    define->name = ASCII(name);
-+			    if (strlen(define->name) > SMACK_LABEL_LENGTH) { //smack limitation on lenght
-+				    rpmlog(RPMLOG_ERR, "Domain name  %s lenght is longer than defined SMACK_LABEL_LENGTH. Can't define such domain\n", define->name);
-+			    	policy = msmFreePointer((void *)policy);
-+				plist = msmFreePointer((void *)plist);
-+				return -1;
-+			    }
-+                if (strlen(define->name) == 0){
-+				    rpmlog(RPMLOG_ERR, "An attempt to define an empty domain name. Can't define such domain\n");
-+			    	policy = msmFreePointer((void *)policy);
-+				plist = msmFreePointer((void *)plist);
-+				return -1;
-+			    }
 +			    define->policy = ASCII(policy);
 +			    define->plist = ASCII(plist);
 +
@@ -3283,13 +3383,13 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +					}
 +				    }
 +				    LISTADD(mfx->provides->ac_domains, ac_domain);
-+			    } else 
-+				    return -1;
++			    } else return -1;
++
 +		    } else  {
-+			    name = msmFreePointer((void *)name);
-+			    policy = msmFreePointer((void *)policy);	
-+			    plist = msmFreePointer((void *)plist);	
-+			    return -1;
++			    rpmlog(RPMLOG_ERR, "Domain name must be defined. Abort installation\n");
++    			    msmFreePointer((void**)&policy);	
++    			    msmFreePointer((void**)&plist);
++			    return -1; 
 +		    }
 +	    } else if (!strcmp(ASCII(node), "request")) {
 +		    int res = msmProcessDRequest(reader, define);
@@ -3302,13 +3402,14 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +	    } else if (!strcmp(ASCII(node), "provide")) {
 +		    int res = msmProcessDProvide(reader, define);
 +		    if (res < 0) return res;
-+	    } else if (!strcmp(ASCII(node), "description")) {
-+		    continue; /* we don't store decriptions tags */
-+	    } else return -1;
++	    } else {
++		rpmlog(RPMLOG_ERR, "Not allowed element in domain define section: %s\n", ASCII(node));
++		return -1;
++	}
 +
 +	if (ret < 0) return ret;
 +    }
-+  
++
 +    return ret;
 +}
 +
@@ -3355,8 +3456,8 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +	    return access;
 +	}
 +    }
-+    data = msmFreePointer((void *)data);
-+    type = msmFreePointer((void *)type);
++    msmFreePointer((void**)&data);
++    msmFreePointer((void**)&type);
 +    return NULL;
 +}
 +
@@ -3476,7 +3577,7 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +    } else {
 +	if (rank) {
 +	    rankval = atoi(ASCII(rank));
-+	    rank = msmFreePointer((void *)rank); /* rankkey is used from now on */
++	    msmFreePointer((void**)&rank); /* rankkey is used from now on */
 +	}
 +    }
 +    if (!sw_source->name) return -1; /* sw source must have name */
@@ -3548,7 +3649,7 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +{
 +    const xmlChar *node;
 +    int ret, depth;
-+
++    int assignPresent = 0, requestPresent = 0, definePresent = 0; /* there must be only one section per manifest */
 +    mfx->sw_source = current;
 +
 +    rpmlog(RPMLOG_DEBUG, "manifest\n");
@@ -3559,21 +3660,36 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +	if (!node) return -1;
 +
 +	if (!strcmp(ASCII(node), "assign")) {
-+	    provide_x *provide = calloc(1, sizeof(provide_x));
-+	    if (provide) {
-+		LISTADD(mfx->provides, provide);
-+		ret = msmProcessProvide(reader, provide, current, mfx, NULL);
-+	    } else return -1;
++		if (assignPresent) {
++			rpmlog(RPMLOG_ERR, "A second assign section in manifest isn't allowed. Abort installation.\n");
++			return -1; 
++		}
++		assignPresent = 1;
++		provide_x *provide = calloc(1, sizeof(provide_x));
++		if (provide) {
++			LISTADD(mfx->provides, provide);
++			ret = msmProcessProvide(reader, provide, current, mfx, NULL);
++	    	} else return -1;
 +	} else if (!strcmp(ASCII(node), "define")) {
-+	    mfx->define = calloc(1, sizeof(define_x));
-+	    if (mfx->define) {
-+		ret = msmProcessDefine(reader, mfx->define, mfx, current);
-+	    } else return -1;
++		if (definePresent) {
++			rpmlog(RPMLOG_ERR, "A second request section in manifest isn't allowed. Abort installation.\n");
++			return -1; 
++		}
++		definePresent = 1;
++	    	mfx->define = calloc(1, sizeof(define_x));
++	    	if (mfx->define) {
++			ret = msmProcessDefine(reader, mfx->define, mfx, current);
++	    	} else return -1;
 +	} else if (!strcmp(ASCII(node), "request")) {
-+	    mfx->request = calloc(1, sizeof(request_x));
-+	    if (mfx->request) {
-+		ret = msmProcessRequest(reader, mfx->request);
-+	    } else return -1;
++		if (requestPresent) {
++			rpmlog(RPMLOG_ERR, "A second request section in manifest isn't allowed. Abort installation.\n");
++			return -1; 
++		}
++		requestPresent = 1;
++	    	mfx->request = calloc(1, sizeof(request_x));
++	    	if (mfx->request) {
++			ret = msmProcessRequest(reader, mfx->request);
++	   	} else return -1;
 +	} else if (!strcmp(ASCII(node), "sw_source")) {
 +	    sw_source_x *sw_source = calloc(1, sizeof(sw_source_x));
 +	    if (sw_source) {
@@ -3641,11 +3757,11 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +{    
 +	if (filesystem) {
 +	    filesystem_x *prev = filesystem->prev;
-+	    filesystem->path = msmFreePointer((void *)filesystem->path);
-+	    filesystem->label = msmFreePointer((void *)filesystem->label);
-+	    filesystem->exec_label = msmFreePointer((void *)filesystem->exec_label);
-+	    filesystem->type = msmFreePointer((void *)filesystem->type);
-+	    filesystem = msmFreePointer((void *)filesystem);
++	    msmFreePointer((void**)&filesystem->path);
++	    msmFreePointer((void**)&filesystem->label);
++	    msmFreePointer((void**)&filesystem->exec_label);
++	    msmFreePointer((void**)&filesystem->type);
++	    msmFreePointer((void**)&filesystem);
 +	    return prev;
 +	} else
 +		return NULL;
@@ -3657,13 +3773,13 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +
 +	if (member) {
 +	    member_x *prev = member->prev;
-+	    member->name = msmFreePointer((void *)member->name);
++	    msmFreePointer((void**)&member->name);
 + 	    if (member->annotation) {
-+		member->annotation->name = msmFreePointer((void *)member->annotation->name);
-+	    	member->annotation->value = msmFreePointer((void *)member->annotation->value);
-+		member->annotation = msmFreePointer((void *)member->annotation);
++		msmFreePointer((void**)&member->annotation->name);
++	    	msmFreePointer((void**)&member->annotation->value);
++		msmFreePointer((void**)&member->annotation);
 +	    }
-+	    member = msmFreePointer((void *)member);
++	    msmFreePointer((void**)&member);
 +	    return prev;
 +	} else
 +		return NULL;
@@ -3678,14 +3794,14 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +
 +	if (interface) {
 +	    interface_x *prev = interface->prev;
-+	    interface->name = msmFreePointer((void *)interface->name);
++	    msmFreePointer((void**)&interface->name);
 + 	    if (interface->annotation) {
-+		interface->annotation->name = msmFreePointer((void *)interface->annotation->name);
-+	    	interface->annotation->value = msmFreePointer((void *)interface->annotation->value);
-+		interface->annotation = msmFreePointer((void *)interface->annotation);
++		msmFreePointer((void**)&interface->annotation->name);
++	    	msmFreePointer((void**)&interface->annotation->value);
++		msmFreePointer((void**)&interface->annotation);
 +	    }
-+            for (member = interface->members; member; member = msmFreeMember(member));
-+	    interface = msmFreePointer((void *)interface);
++           for (member = interface->members; member; member = msmFreeMember(member));
++	    msmFreePointer((void**)&interface);
 +	    return prev;
 +	} else
 +		return NULL;
@@ -3699,15 +3815,15 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +
 +	if (node) {
 +	    node_x *prev = node->prev;
-+	    node->name = msmFreePointer((void *)node->name);
++	    msmFreePointer((void**)&node->name);
 + 	    if (node->annotation) {
-+		node->annotation->name = msmFreePointer((void *)node->annotation->name);
-+	    	node->annotation->value = msmFreePointer((void *)node->annotation->value);
-+		node->annotation = msmFreePointer((void *)node->annotation);
++		msmFreePointer((void**)&node->annotation->name);
++	    	msmFreePointer((void**)&node->annotation->value);
++		msmFreePointer((void**)&node->annotation);
 +	    }
 +	    for (member = node->members; member; member = msmFreeMember(member));
 +	    for (interface = node->interfaces; interface; interface = msmFreeInterface(interface));
-+	    node = msmFreePointer((void *)node);
++	    msmFreePointer((void**)&node);
 +	    return prev;
 +	} else
 +		return NULL;
@@ -3720,23 +3836,23 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +
 +	if (dbus) {
 +	    dbus_x *prev = dbus->prev;
-+	    dbus->name = msmFreePointer((void *)dbus->name);
-+	    dbus->own = msmFreePointer((void *)dbus->own);
-+	    dbus->bus = msmFreePointer((void *)dbus->bus);
++	    msmFreePointer((void**)&dbus->name);
++	    msmFreePointer((void**)&dbus->own);
++	    msmFreePointer((void**)&dbus->bus);
 +            if (dbus->annotation) {
-+		dbus->annotation->name = msmFreePointer((void *)dbus->annotation->name);
-+	    	dbus->annotation->value = msmFreePointer((void *)dbus->annotation->value);
-+		dbus->annotation = msmFreePointer((void *)dbus->annotation);
++		msmFreePointer((void**)&dbus->annotation->name);
++	    	msmFreePointer((void**)&dbus->annotation->value);
++		msmFreePointer((void**)&dbus->annotation);
 +	    }
 +	    for (node = dbus->nodes; node; node = msmFreeNode(node));
-+	    dbus = msmFreePointer((void *)dbus);
++	    msmFreePointer((void**)&dbus);
 +	    return prev;
 +	} else return NULL;
 +}
 +
 +static provide_x *msmFreeProvide(provide_x *provide) 
 +{
-+    ac_domain_x *ac_domain, *tmp;
++    ac_domain_x *ac_domain;
 +    filesystem_x *filesystem;
 +    provide_x *prev = provide->prev;
 +    dbus_x *dbus;
@@ -3745,10 +3861,10 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +	    for (ac_domain = provide->ac_domains; ac_domain; ac_domain = msmFreeACDomain(ac_domain));
 +	    if (provide->filesystems)
 +	    	for (filesystem = provide->filesystems; filesystem; filesystem = msmFreeFilesystem(filesystem));
-+	    provide->name = msmFreePointer((void *)provide->name);
-+	    provide->origin = msmFreePointer((void *)provide->origin);
++	    msmFreePointer((void**)&provide->name);
++	    msmFreePointer((void**)&provide->origin);
 +	    for (dbus = provide->dbuss; dbus; dbus = msmFreeDBus(dbus));
-+	    provide = msmFreePointer((void *)provide);
++	    msmFreePointer((void**)&provide);
 +    }
 +    return prev;
 +}
@@ -3757,8 +3873,8 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +static file_x *msmFreeFile(file_x *file)
 +{
 +    file_x *prev = file->prev;
-+    file->path = msmFreePointer((void *)file->path);
-+    file = msmFreePointer((void *)file);
++    msmFreePointer((void**)&file->path);
++    msmFreePointer((void**)&file);
 +    return prev;
 +}
 +
@@ -3767,26 +3883,26 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +    provide_x *provide;
 +    package_x *prev = package->prev;
 +    for (provide = package->provides; provide; provide = msmFreeProvide(provide));
-+    package->name = msmFreePointer((void *)package->name);
-+    package->modified = msmFreePointer((void *)package->modified);
-+    package = msmFreePointer((void *)package);
++    msmFreePointer((void**)&package->name);
++    msmFreePointer((void**)&package->modified);
++    msmFreePointer((void**)&package);
 +    return prev;
 +}
 +
 +static keyinfo_x *msmFreeKeyinfo(keyinfo_x *keyinfo)
 +{
 +    keyinfo_x *prev = keyinfo->prev;
-+    keyinfo->keydata = msmFreePointer((void *)keyinfo->keydata);
-+    keyinfo = msmFreePointer((void *)keyinfo);
++    msmFreePointer((void**)&keyinfo->keydata);
++    msmFreePointer((void**)&keyinfo);
 +    return prev;
 +}
 +
 +static access_x *msmFreeAccess(access_x *access)
 +{
 +    access_x *prev = access->prev;
-+    access->data = msmFreePointer((void *)access->data);
-+    access->type = msmFreePointer((void *)access->type);
-+    access = msmFreePointer((void *)access);
++    msmFreePointer((void**)&access->data);
++    msmFreePointer((void**)&access->type);
++    msmFreePointer((void**)&access);
 +    return prev;
 +}
 +
@@ -3797,8 +3913,8 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +    origin_x *prev = origin->prev;
 +    for (keyinfo = origin->keyinfos; keyinfo; keyinfo = msmFreeKeyinfo(keyinfo));
 +    for (access = origin->accesses; access; access = msmFreeAccess(access));
-+    origin->type = msmFreePointer((void *)origin->type);
-+    origin = msmFreePointer((void *)origin);
++    msmFreePointer((void**)&origin->type);
++    msmFreePointer((void**)&origin);
 +    return prev;
 +}
 +
@@ -3828,9 +3944,9 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +	}
 +    }
 +    for (origin = sw_source->origins; origin; origin = msmFreeOrigin(origin));
-+    sw_source->name = msmFreePointer((void *)sw_source->name);
-+    sw_source->rankkey = msmFreePointer((void *)sw_source->rankkey);
-+    sw_source = msmFreePointer((void *)sw_source);
++    msmFreePointer((void**)&sw_source->name);
++    msmFreePointer((void**)&sw_source->rankkey);
++    msmFreePointer((void**)&sw_source);
 +    return next;
 +}
 +
@@ -3838,9 +3954,9 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +{
 +    d_request_x *next = d_request->next;
 +    rpmlog(RPMLOG_DEBUG, "freeing domain request %s\n", d_request->label_name);
-+    d_request->label_name = msmFreePointer((void *)d_request->label_name);
-+    d_request->ac_type = msmFreePointer((void *)d_request->ac_type);
-+    d_request = msmFreePointer((void *)d_request);
++    msmFreePointer((void**)&d_request->label_name);
++    msmFreePointer((void**)&d_request->ac_type);
++    msmFreePointer((void**)&d_request);
 +    return next;
 +}
 +
@@ -3848,9 +3964,9 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +{
 +    d_permit_x *next = d_permit->next;
 +    rpmlog(RPMLOG_DEBUG, "freeing domain permit %s\n", d_permit->label_name);
-+    d_permit->label_name = msmFreePointer((void *)d_permit->label_name);
-+    d_permit->ac_type = msmFreePointer((void *)d_permit->ac_type);
-+    d_permit = msmFreePointer((void *)d_permit);
++    msmFreePointer((void**)&d_permit->label_name);
++    msmFreePointer((void**)&d_permit->ac_type);
++    msmFreePointer((void**)&d_permit);
 +    return next;
 +}
 +
@@ -3858,8 +3974,8 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +{
 +    d_provide_x *next = d_provide->next;
 +    rpmlog(RPMLOG_DEBUG, "freeing domain provide %s\n", d_provide->label_name);
-+    d_provide->label_name = msmFreePointer((void *)d_provide->label_name);
-+    d_provide = msmFreePointer((void *)d_provide);
++    msmFreePointer((void**)&d_provide->label_name);
++    msmFreePointer((void**)&d_provide);
 +    return next;
 +}
 +
@@ -3876,24 +3992,24 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +    if (mfx) {
 +	if (mfx->provides)
 +		for (provide = mfx->provides; provide; provide = msmFreeProvide(provide));
-+        rpmlog(RPMLOG_DEBUG, "after freeing provides\n");
++       rpmlog(RPMLOG_DEBUG, "after freeing provides\n");
 +	if (mfx->request) {
-+		mfx->request->ac_domain = msmFreePointer((void*)mfx->request->ac_domain);
-+		mfx->request = msmFreePointer((void*)mfx->request);
++		msmFreePointer((void**)&mfx->request->ac_domain);
++		msmFreePointer((void**)&mfx->request);
 +	}
-+        rpmlog(RPMLOG_DEBUG, "after freeing requests\n");
++       rpmlog(RPMLOG_DEBUG, "after freeing requests\n");
 +	for (file = mfx->files; file; file = msmFreeFile(file));
-+        rpmlog(RPMLOG_DEBUG, "after freeing files\n");
++       rpmlog(RPMLOG_DEBUG, "after freeing files\n");
 +	if (mfx->sw_sources) {
 +	    LISTHEAD(mfx->sw_sources, sw_source);	
 +	    for (; sw_source; sw_source = msmFreeSWSource(sw_source));
 +	}
-+	mfx->name = msmFreePointer((void *)mfx->name);
++	msmFreePointer((void**)&mfx->name);
 +       rpmlog(RPMLOG_DEBUG, "after freeing name\n");
 +	if (mfx->define) {
-+		mfx->define->name = msmFreePointer((void*)mfx->define->name);
-+		mfx->define->policy = msmFreePointer((void*)mfx->define->policy);
-+		mfx->define->plist = msmFreePointer((void*)mfx->define->plist);
++		msmFreePointer((void**)&mfx->define->name);
++		msmFreePointer((void**)&mfx->define->policy);
++		msmFreePointer((void**)&mfx->define->plist);
 +		if (mfx->define->d_requests) {
 +			LISTHEAD(mfx->define->d_requests, d_request);	
 +	    		for (; d_request; d_request = msmFreeDRequest(d_request));
@@ -3909,11 +4025,11 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +	    		for (; d_provide; d_provide = msmFreeDProvide(d_provide));
 +		}
 +        	rpmlog(RPMLOG_DEBUG, "after freeing provides\n");
-+		mfx->define = msmFreePointer((void*) mfx->define); 
++		msmFreePointer((void**)&mfx->define); 
 +	}
 +
 +       rpmlog(RPMLOG_DEBUG, "after freeing defines \n");
-+	mfx = msmFreePointer((void*)mfx);
++	msmFreePointer((void**)&mfx);
 +    }
 +    return mfx; 
 +}
@@ -4040,7 +4156,7 @@ diff -Nuarp rpm/security/msmmatch.c rpm-security/security/msmmatch.c
 diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 --- rpm/security/msmxattr.c	1970-01-01 02:00:00.000000000 +0200
 +++ rpm-security/security/msmxattr.c	2012-07-24 12:44:01.576804569 +0300
-@@ -0,0 +1,1310 @@
+@@ -0,0 +1,1340 @@
 +/*
 + * This file is part of MSM security plugin
 + * Greatly based on the code of MSSF security plugin
@@ -4093,7 +4209,7 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +    if (all_ac_domains) {
 +	HASH_CLEAR(hh,all_ac_domains);
 +    }
-+    rpmlog(RPMLOG_DEBUG, "after all_ac_domains clear\n");
++
 +    if (allpackages) {
 +	HASH_CLEAR(hh,allpackages);
 +    }
@@ -4269,7 +4385,7 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +    ret = 0;
 + exit:
 +    if (file) fclose(file);
-+    sysconfdir = msmFreePointer((void*)sysconfdir);
++    msmFreePointer((void**)&sysconfdir);
 +
 +    return ret;
 +}
@@ -4657,7 +4773,7 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 + exit:
 +    if (file) fclose(file);
 +    if (ret) unlink(path);
-+    sysconfdir = msmFreePointer((void*)sysconfdir);
++    msmFreePointer((void**)&sysconfdir);
 +
 +    return ret;
 +}
@@ -4729,7 +4845,7 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +					    }					
 +					    pch = strtok(NULL, ", ");
 +					  }
-+					tmp = msmFreePointer((void*)tmp);
++					msmFreePointer((void**)&tmp);
 +				}
 +				if (found != 1) {
 +					rpmlog(RPMLOG_ERR, "Request for a domain name %s isn't allowed because ac domain is restricted\n", mfx->request->ac_domain);
@@ -4899,7 +5015,7 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +			strtok(name, ":");// remove label name if present
 +			rpmlog(RPMLOG_DEBUG, "label name %s domain name %s \n", d_request->label_name, name);
 +                       ret = msmCheckDomainRequest(mfx, name);
-+			name = msmFreePointer((void*)name);
++			msmFreePointer((void**)&name);
 +			if (ret < 0) {
 +				return -1;
 +			}
@@ -4946,9 +5062,9 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +    return package;
 +
 + exit:
-+    package->name = msmFreePointer((void *)package->name);
-+    package->modified = msmFreePointer((void *)package->modified);
-+    package = msmFreePointer((void*)package);
++    msmFreePointer((void**)&package->name);
++    msmFreePointer((void**)&package->modified);
++    msmFreePointer((void**)&package);
 +
 +    return NULL;
 +}
@@ -5050,7 +5166,7 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +	HASH_ADD_KEYPTR(hh, allpackages, package->name, strlen(package->name), package);   
 +	/* set sw source smack rules*/
 +	if ((msmSetupProvides(smack_accesses, package)) < 0 ) {
-+		HASH_DELETE(hh, allpackages, package);
++		msmCancelPackage(package->name);  
 +		return -1;
 +	}
 +	first = package;
@@ -5073,8 +5189,33 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +    return package;
 +}
 +
++static void msmCancelACDomain(const char *name)
++{
++    if (name) {
++	ac_domain_x *domain;
++	HASH_FIND(hh, all_ac_domains, name, strlen(name), domain);
++	if (domain) {
++	    HASH_DELETE(hh, all_ac_domains, domain);
++	    if (domain->older) {
++		/* resume previous version */
++		HASH_ADD_KEYPTR(hh, all_ac_domains, domain->older->name, strlen(domain->older->name), domain->older);
++		domain->older->older = domain->older->newer;
++		domain->older->newer = NULL;
++		domain->newer = domain->older;
++		domain->older = NULL;
++	    } else {
++		/* no previous, just take this one out */
++		domain->newer = domain;
++	    }
++	}
++    }
++}
++
 +void msmCancelPackage(const char *name)
 +{
++    provide_x *provide;
++    ac_domain_x *ac_domain;
++
 +    if (name) {
 +	package_x *package;
 +	HASH_FIND(hh, allpackages, name, strlen(name), package);
@@ -5091,6 +5232,11 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +		/* no previous, just take this one out */
 +		package->newer = package;
 +	    }
++	   /* need to clean up the all_ac_domain list, too */
++    	   for (provide = package->provides; provide; provide = provide->prev) {
++		for (ac_domain = provide->ac_domains; ac_domain; ac_domain = ac_domain->prev) 
++			msmCancelACDomain(ac_domain->name);
++	   }
 +	}
 +    }
 +}
@@ -5113,7 +5259,7 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +
 + pipe = popen(str, "r");
 + if (!pipe) {
-+   str = msmFreePointer((void*)str);
++   msmFreePointer((void**)&str);
 +   return -1;
 + }
 +
@@ -5129,7 +5275,7 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +	}
 + }
 +
-+ str = msmFreePointer((void*)str);
++ msmFreePointer((void**)&str);
 + pclose(pipe);
 + return result;
 +}
@@ -5267,7 +5413,7 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +	label = NULL;
 +   	exec_label = NULL;
 +    	if ((rootDir) && (strcmp(rootDir, "/") != 0)) {
-+        	fullPath = msmFreePointer((void*)fullPath);
++        	msmFreePointer((void**)&fullPath);
 +    	}
 +
 +    }
