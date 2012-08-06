@@ -968,7 +968,7 @@ diff -Nuarp rpm/security/Makefile.msm rpm-security/security/Makefile.msm
 diff -Nuarp rpm/security/msm.c rpm-security/security/msm.c
 --- rpm/security/msm.c	1970-01-01 02:00:00.000000000 +0200
 +++ rpm-security/security/msm.c	2012-07-24 12:42:23.144316466 +0300
-@@ -0,0 +1,909 @@
+@@ -0,0 +1,914 @@
 +/*
 + * This file is part of MSM security plugin
 + * Greatly based on the code of MSSF security plugin
@@ -1086,10 +1086,12 @@ diff -Nuarp rpm/security/msm.c rpm-security/security/msm.c
 +    if (stat(SMACK_RULES_PATH, &buf) != 0) {
 +        rpmlog(RPMLOG_INFO, "A directory for writing smack rules is missing. Creating one.\n");
 +        mode_t mode = S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IROTH; // 644 -rwer--r--
-+        if (mkdir(SMACK_RULES_PATH_BEG, mode) != 0){
-+            rpmlog(RPMLOG_ERR, "Failed to create a sub-directory for smack rules\n");
-+            return RPMRC_FAIL;
-+        }    
++    	 if (stat(SMACK_RULES_PATH_BEG, &buf) != 0) {
++        	if (mkdir(SMACK_RULES_PATH_BEG, mode) != 0) {
++           		rpmlog(RPMLOG_ERR, "Failed to create a sub-directory for smack rules\n");
++            		return RPMRC_FAIL;
++        	}    
++	 }
 +        if (mkdir(SMACK_RULES_PATH, mode) != 0){
 +            rpmlog(RPMLOG_ERR, "Failed to create a directory for smack rules\n");
 +            return RPMRC_FAIL;
@@ -1486,6 +1488,8 @@ diff -Nuarp rpm/security/msm.c rpm-security/security/msm.c
 +
 +	if (!package->sw_source) { /* this must never happen */
 +		rpmlog(RPMLOG_ERR, "Install failed. Check that configuration has at least root sw source installed.\n");
++	        msmFreePackage(package);
++		package = NULL;
 +		goto fail;
 +	}
 +	    
@@ -1745,6 +1749,7 @@ diff -Nuarp rpm/security/msm.c rpm-security/security/msm.c
 +		        if (ret) {
 +		            rpmlog(RPMLOG_ERR, "Filesystem label setup failed for %s\n",
 +			           rpmteN(ctx->te));
++	    		    msmCancelPackage(ctx->mfx->name);
 +		            goto exit;
 +		        }
 +	        }
@@ -2149,7 +2154,7 @@ diff -Nuarp rpm/security/msmconfig.c rpm-security/security/msmconfig.c
 diff -Nuarp rpm/security/msm.h rpm-security/security/msm.h
 --- rpm/security/msm.h	1970-01-01 02:00:00.000000000 +0200
 +++ rpm-security/security/msm.h	2012-07-24 12:31:43.385144067 +0300
-@@ -0,0 +1,465 @@
+@@ -0,0 +1,466 @@
 +/*
 + * This file is part of MSM security plugin
 + * Greatly based on the code of MSSF security plugin
@@ -2194,6 +2199,7 @@ diff -Nuarp rpm/security/msm.h rpm-security/security/msm.h
 +#define SMACK_LOAD_PATH "/smack/load"
 +
 +#define SMACK_LABEL_LENGTH 255
++#define SMACK_ACCESS_TYPE_LENGHT 5
 +#define SMACK_UNINSTALL 1 
 +#define RANK_LIMIT 10000
 +
@@ -2618,7 +2624,7 @@ diff -Nuarp rpm/security/msm.h rpm-security/security/msm.h
 diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 --- rpm/security/msmmanifest.c	1970-01-01 02:00:00.000000000 +0200
 +++ rpm-security/security/msmmanifest.c	2012-07-24 12:27:43.027952214 +0300
-@@ -0,0 +1,1459 @@
+@@ -0,0 +1,1457 @@
 +/*
 + * This file is part of MSM security plugin
 + * Greatly based on the code of MSSF security plugin
@@ -3101,6 +3107,10 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +	int res = 0, idx = 0;
 +
 +	if (type) {
++	    if (strlen(type) > SMACK_ACCESS_TYPE_LENGHT) {
++		    rpmlog(RPMLOG_ERR, "Lenght of the access type is bigger than allowed value: %s\n", type);
++		    return -1;
++	    }
 +	    while ( type[idx] != '\0' ){
 +		if ((type[idx] !='a') && (type[idx]!='r') && (type[idx]!='w') &&
 +		    (type[idx]!='x') && (type[idx]!='t') && (type[idx] !='-')) {
@@ -3118,6 +3128,14 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +	int res = 0, idx = 0;
 +
 +	if (type) {
++	    if (strlen(ASCII(type)) > SMACK_LABEL_LENGTH) { //smack limitation on lenght
++		rpmlog(RPMLOG_ERR, "Domain or label name  %s lenght is longer than defined SMACK_LABEL_LENGTH\n", type);
++		return -1; 
++	    }
++           if (strlen(ASCII(type)) == 0){
++		rpmlog(RPMLOG_ERR, "An attempt to define an empty domain or label name\n");
++    		return -1; 
++	    }
 + 	    if (type[0] == '-') {
 +		rpmlog(RPMLOG_ERR, "Dash is not allowed as first character in smack label: %s\n", type);
 +		return -1;
@@ -3329,22 +3347,8 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +		    rpmlog(RPMLOG_DEBUG, "domain %s policy %s plist %s\n", 
 +			   ASCII(name), ASCII(policy), ASCII(plist));
 +
-+		    if (name) {
-+			    if (strlen(ASCII(name)) > SMACK_LABEL_LENGTH) { //smack limitation on lenght
-+				rpmlog(RPMLOG_ERR, "Domain name  %s lenght is longer than defined SMACK_LABEL_LENGTH. Can't define such domain\n", define->name);
-+    			    	msmFreePointer((void**)&name);
-+    			    	msmFreePointer((void**)&policy);		
-+    			    	msmFreePointer((void**)&plist);
-+			    	return -1; 
-+			    }
-+                	    if (strlen(ASCII(name)) == 0){
-+				rpmlog(RPMLOG_ERR, "An attempt to define an empty domain name. Can't define such domain\n");
-+    			    	msmFreePointer((void**)&name);
-+    			    	msmFreePointer((void**)&policy);		
-+    			    	msmFreePointer((void**)&plist);
-+			    	return -1; 
-+			    }
-+
++		    if (name) {	
++		    
 +                	    if (msmVerifySmackLabel(ASCII(name)) < 0){
 +    			    	msmFreePointer((void**)&name);
 +    			    	msmFreePointer((void**)&policy);		

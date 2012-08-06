@@ -1,3 +1,9 @@
+* Mon Aug 06 2012 Elena Reshetova <elena.reshetova@intel.com> - 4.9.0
+- Changes to the security plugin
+  - Fix the smack directory creation when subdir is present
+  - Add a check for access type lenght
+  - Small code rearrangments 
+
 * Mon Jul 30 2012 Elena Reshetova <elena.reshetova@intel.com> - 4.9.0
 - Changes to the security plugin
   - Cosmetic change to msmFreePointer function
