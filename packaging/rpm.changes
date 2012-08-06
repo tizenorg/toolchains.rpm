@@ -1,3 +1,7 @@
+* Mon Aug 06 2012 William Douglas <william.douglas@intel.com> build/2012-07-30.142546@9c7636b
+[ William Douglas ]
+- Keep function symbols for backtraces.
+
 * Mon Aug 06 2012 Elena Reshetova <elena.reshetova@intel.com> - 4.9.0
 - Changes to the security plugin
   - Fix the smack directory creation when subdir is present

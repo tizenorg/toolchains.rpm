@@ -46,6 +46,7 @@ Patch85:        rpmio_base64_4.9.1_fix.patch
 Patch86:        rpmlib_format_value_4.9.1_fix.patch
 Patch87:        security_4.9.1.patch
 Patch90:        disableperl.patch
+Patch100:       eu-strip.patch
 
 # Partially GPL/LGPL dual-licensed and some bits with BSD
 # SourceLicense: (GPLv2+ and LGPLv2+ with exceptions) and BSD
@@ -180,6 +181,7 @@ rm -f rpmdb/db.h
 %patch86 -p1
 %patch87 -p1 -b .msm
 %patch90 -p1
+%patch100 -p1
 
 
 rm -f m4/libtool.m4
