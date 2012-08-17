@@ -964,7 +964,7 @@ diff -Nuarp rpm/security/Makefile.msm rpm-security/security/Makefile.msm
 diff -Nuarp rpm/security/msm.c rpm-security/security/msm.c
 --- rpm/security/msm.c	1970-01-01 02:00:00.000000000 +0200
 +++ rpm-security/security/msm.c	2012-08-06 13:32:38.137823835 +0300
-@@ -0,0 +1,909 @@
+@@ -0,0 +1,903 @@
 +/*
 + * This file is part of MSM security plugin
 + * Greatly based on the code of MSSF security plugin
@@ -1607,8 +1607,6 @@ diff -Nuarp rpm/security/msm.c rpm-security/security/msm.c
 +    packagecontext *ctx = context;
 +    if (!ctx) return RPMRC_FAIL;
 +
-+
-+
 +    ctx->path = getFilePath(fsm->dirName, fsm->baseName);
 +    rpmlog(RPMLOG_DEBUG, "Constructed file name: %s \n", ctx->path);
 + 
@@ -1633,9 +1631,6 @@ diff -Nuarp rpm/security/msm.c rpm-security/security/msm.c
 +	    }
 +	    HASH_Begin(ctx->hashctx);
 +    }
-+
-+
-+
 +    return RPMRC_OK;
 +}
 +
@@ -1798,7 +1793,6 @@ diff -Nuarp rpm/security/msm.c rpm-security/security/msm.c
 +    return NULL;
 +
 +}
-+
 +
 +rpmRC SECURITYHOOK_CLEANUP_FUNC(void)
 +{
@@ -2379,6 +2373,7 @@ diff -Nuarp rpm/security/msm.h rpm-security/security/msm.h
 +
 +typedef struct d_permit_x {
 +    const char *label_name;
++    const char *to_label_name;
 +    const char *ac_type;
 +    struct d_permit_x *prev;
 +    struct d_permit_x *next;
@@ -2486,7 +2481,6 @@ diff -Nuarp rpm/security/msm.h rpm-security/security/msm.h
 + * @return		allocated and initialized package struct
 + */
 +package_x *msmCreatePackage(const char *name, sw_source_x *sw_source, provide_x *provides, const char *modified);
-+
 +
 +/** \ingroup msm
 + * Go through all provides in manifest, add provided ac domains to hash.
@@ -2616,7 +2610,7 @@ diff -Nuarp rpm/security/msm.h rpm-security/security/msm.h
 diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 --- rpm/security/msmmanifest.c	1970-01-01 02:00:00.000000000 +0200
 +++ rpm-security/security/msmmanifest.c	2012-08-06 12:49:34.381011684 +0300
-@@ -0,0 +1,1457 @@
+@@ -0,0 +1,1484 @@
 +/*
 + * This file is part of MSM security plugin
 + * Greatly based on the code of MSSF security plugin
@@ -2664,7 +2658,85 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +#define ASCII(s) (const char *)s
 +#define XMLCHAR(s) (const xmlChar *)s
 +
-+static int msmNextChildElement(xmlTextReaderPtr reader, int depth) {
++
++static int msmVerifyAccessType(const char* type)
++{
++	int res = 0, idx = 0;
++
++	if (type) {
++	    if (strlen(type) > SMACK_ACCESS_TYPE_LENGHT) {
++		    rpmlog(RPMLOG_ERR, "Lenght of the access type is bigger than allowed value: %s\n", type);
++		    return -1;
++	    }
++	    while ( type[idx] != '\0' ){
++		if ((type[idx] !='a') && (type[idx]!='r') && (type[idx]!='w') &&
++		    (type[idx]!='x') && (type[idx]!='t') && (type[idx] !='-')) {
++		    rpmlog(RPMLOG_ERR, "Not allowed character in access type: %s\n", type);
++		    res = -1;
++		    break;
++		}
++		idx++;
++	    }
++	} else return -1; 
++	return res;
++}
++
++static int msmVerifySmackLabel(const char* label)
++{
++	int res = 0, idx = 0;
++
++	if (label) {
++	    if (strlen(ASCII(label)) > SMACK_LABEL_LENGTH) { //smack limitation on lenght
++		rpmlog(RPMLOG_ERR, "Domain or label name  %s lenght is longer than defined SMACK_LABEL_LENGTH\n", label);
++		return -1; 
++	    }
++           if (strlen(ASCII(label)) == 0){
++		rpmlog(RPMLOG_ERR, "An attempt to define an empty domain or label name\n");
++    		return -1; 
++	    }
++ 	    if (label[0] == '-') {
++		rpmlog(RPMLOG_ERR, "Dash is not allowed as first character in smack label: %s\n", label);
++		return -1;
++	    }
++	    while ( label[idx] != '\0' ){
++		if ((label[idx] =='\"') || (label[idx] =='\'') || (label[idx] =='/') ||
++		    (label[idx] =='\\') || (label[idx] > '~') || (label[idx] <= ' ')) {
++		    rpmlog(RPMLOG_ERR, "Not allowed character in smack label: %s, position: %d \n", label, idx);
++		    res = -1;
++		    break;
++		}
++		idx++;
++	    }
++	} else return -1; 
++
++	return res;
++}
++
++static int msmVerifyLabelPrefix(const char* sub_label, const char* domain_name) 
++{
++    char *tmp = NULL;
++    char sep[]= "::";
++
++    tmp = calloc(strlen(domain_name) + 3, sizeof (const char));
++    if (!tmp) 
++	return -1;
++
++    strncpy(tmp, domain_name, strlen(domain_name));
++    strncpy(tmp + strlen(domain_name), sep, 2);
++
++    if (strstr(ASCII(sub_label), tmp) != ASCII(sub_label)) { //sub label name should be prefixed by domain name and "::"
++	rpmlog(RPMLOG_ERR, "Label name %s isn't prefixed by domain name %s\n", ASCII(sub_label), domain_name);
++	msmFreePointer((void**)&tmp);
++	return -1;
++    } 
++
++    msmFreePointer((void**)&tmp);
++    return 0;
++
++}
++
++static int msmNextChildElement(xmlTextReaderPtr reader, int depth) 
++{
 +    int ret = xmlTextReaderRead(reader);
 +    int cur = xmlTextReaderDepth(reader);
 +    while (ret == 1) {
@@ -2930,10 +3002,12 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +	   ASCII(path), ASCII(label), ASCII(exec_label), ASCII(type));
 +
 +   if (path && (label || exec_label)) {
-+	/*if (exec_label && label) {
-+	    rpmlog(RPMLOG_ERR, "An attempt to setup both label and exec_label on file. You should not need to do it.\n");
-+	    goto exit;
-+	} */
++	if ((label) && (msmVerifySmackLabel(ASCII(label)) < 0)) {
++		goto fail;
++	}
++	if ((exec_label) && (msmVerifySmackLabel(ASCII(exec_label)) < 0)) {
++		goto fail;
++	}
 +
 +	filesystem_x *filesystem = calloc(1, sizeof(filesystem_x));
 +	if (filesystem) {
@@ -2950,6 +3024,7 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +	   ASCII(path), ASCII(label), ASCII(exec_label));
 +    }
 +
++fail:
 +    msmFreePointer((void**)&path);
 +    msmFreePointer((void**)&label);
 +    msmFreePointer((void**)&exec_label);
@@ -3058,8 +3133,6 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +    return ret;
 +}
 +
-+
-+
 +static int msmProcessRequest(xmlTextReaderPtr reader, request_x *request) 
 +{
 +    const xmlChar *node, *name;
@@ -3095,57 +3168,6 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +    return ret;
 +}
 +
-+static int msmVerifyAccessType(const char* type){
-+	int res = 0, idx = 0;
-+
-+	if (type) {
-+	    if (strlen(type) > SMACK_ACCESS_TYPE_LENGHT) {
-+		    rpmlog(RPMLOG_ERR, "Lenght of the access type is bigger than allowed value: %s\n", type);
-+		    return -1;
-+	    }
-+	    while ( type[idx] != '\0' ){
-+		if ((type[idx] !='a') && (type[idx]!='r') && (type[idx]!='w') &&
-+		    (type[idx]!='x') && (type[idx]!='t') && (type[idx] !='-')) {
-+		    rpmlog(RPMLOG_ERR, "Not allowed character in access type: %s\n", type);
-+		    res = -1;
-+		    break;
-+		}
-+		idx++;
-+	    }
-+	} else return -1; 
-+	return res;
-+}
-+
-+static int msmVerifySmackLabel(const char* type){
-+	int res = 0, idx = 0;
-+
-+	if (type) {
-+	    if (strlen(ASCII(type)) > SMACK_LABEL_LENGTH) { //smack limitation on lenght
-+		rpmlog(RPMLOG_ERR, "Domain or label name  %s lenght is longer than defined SMACK_LABEL_LENGTH\n", type);
-+		return -1; 
-+	    }
-+           if (strlen(ASCII(type)) == 0){
-+		rpmlog(RPMLOG_ERR, "An attempt to define an empty domain or label name\n");
-+    		return -1; 
-+	    }
-+ 	    if (type[0] == '-') {
-+		rpmlog(RPMLOG_ERR, "Dash is not allowed as first character in smack label: %s\n", type);
-+		return -1;
-+	    }
-+	    while ( type[idx] != '\0' ){
-+		if ((type[idx] =='\"') || (type[idx] =='\'') || (type[idx] =='/') ||
-+		    (type[idx] =='\\') || (type[idx] > '~') || (type[idx] <= ' ')) {
-+		    rpmlog(RPMLOG_ERR, "Not allowed character in smack label: %s, position:%d \n", type, idx);
-+		    res = -1;
-+		    break;
-+		}
-+		idx++;
-+	    }
-+	} else return -1; 
-+
-+	return res;
-+}
-+
 +static int msmProcessDRequest(xmlTextReaderPtr reader, define_x *define) 
 +{
 +    const xmlChar *node = NULL, *label = NULL, *type = NULL;
@@ -3167,6 +3189,11 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +		    	msmFreePointer((void**)&label);
 +		    	msmFreePointer((void**)&type);	
 +			return -1; 
++		    }
++		    if (msmVerifySmackLabel(ASCII(label)) < 0) {
++		    	msmFreePointer((void**)&label);
++		    	msmFreePointer((void**)&type);
++			return -1;
 +		    }
 +		    d_request_x *request = calloc(1, sizeof(d_request_x));
 +		    if (request) {
@@ -3197,7 +3224,7 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +
 +static int msmProcessDPermit(xmlTextReaderPtr reader, define_x *define) 
 +{
-+    const xmlChar *node, *label, *type;
++    const xmlChar *node, *label, *type, *to_label;
 +    int ret, depth;
 +
 +    rpmlog(RPMLOG_DEBUG, "permit\n");
@@ -3209,22 +3236,38 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +
 +	if (!strcmp(ASCII(node), "smack")) {
 +	    label = xmlTextReaderGetAttribute(reader, XMLCHAR("permit"));
++	    to_label = xmlTextReaderGetAttribute(reader, XMLCHAR("to"));
 +	    type = xmlTextReaderGetAttribute(reader, XMLCHAR("type"));
-+	    rpmlog(RPMLOG_DEBUG, "permit %s type %s\n", ASCII(label), ASCII(type));
++	    rpmlog(RPMLOG_DEBUG, "permit %s to %s type %s\n", ASCII(label), ASCII(to_label), ASCII(type));
 +
 +	    if (label && type) {
 +		    if (msmVerifyAccessType(ASCII(type)) < 0) {
 +		    	msmFreePointer((void**)&label);
++		    	msmFreePointer((void**)&to_label);
 +		    	msmFreePointer((void**)&type);	
 +			return -1; 
++		    }
++		    if (msmVerifySmackLabel(ASCII(label)) < 0) {
++		    	msmFreePointer((void**)&label);
++		    	msmFreePointer((void**)&to_label);
++		    	msmFreePointer((void**)&type);
++			return -1;
++		    }
++		    if ((to_label) && (msmVerifyLabelPrefix(ASCII(to_label), define->name) < 0)) {
++		    	msmFreePointer((void**)&label);
++		    	msmFreePointer((void**)&to_label);
++		    	msmFreePointer((void**)&type);
++			return -1;
 +		    }
 +		    d_permit_x *permit = calloc(1, sizeof(d_permit_x));
 +		    if (permit) {
 +			permit->label_name = ASCII(label);
++			permit->to_label_name = ASCII(to_label);
 +			permit->ac_type = ASCII(type);
 +			LISTADD(define->d_permits, permit);
 +		    } else {
 +			msmFreePointer((void**)&label);
++		    	msmFreePointer((void**)&to_label);
 +		   	msmFreePointer((void**)&type);
 +			return -1;
 +		    }
@@ -3233,6 +3276,7 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +		    rpmlog(RPMLOG_ERR, "One of the mandatory arguments for domain permit is missing. Abort installation\n");
 +		    rpmlog(RPMLOG_ERR, "smack permit label %s type %s\n", ASCII(label), ASCII(type));
 +		    msmFreePointer((void**)&label);
++		    msmFreePointer((void**)&to_label);
 +		    msmFreePointer((void**)&type);	
 +		    return -1;
 +	    }
@@ -3249,7 +3293,6 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +{
 +    const xmlChar *node, *label;
 +    int ret = 0, depth;
-+    char sep[]= "::";
 +
 +    rpmlog(RPMLOG_DEBUG, "provide\n");
 +
@@ -3263,35 +3306,16 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +	    rpmlog(RPMLOG_DEBUG, "label %s \n", ASCII(label));
 +
 +	    if (label) {
-+		    if (strlen(ASCII(label)) > SMACK_LABEL_LENGTH) { //smack limitation on lenght
-+			rpmlog(RPMLOG_ERR, "Label name  %s lenght %d is longer than defined SMACK_LABEL_LENGTH. Can't define such domain\n", 
-+													label, strlen(ASCII(label)));
++		    if (msmVerifySmackLabel(ASCII(label)) < 0) {
 +    			msmFreePointer((void**)&label);
 +			return -1;
 +		    }
 +
-+		    char *tmp = calloc(strlen(define->name) + 3, sizeof (const char));
-+		    if (!tmp) {
-+			msmFreePointer((void**)&label);
++		    if (msmVerifyLabelPrefix(ASCII(label), define->name) < 0) {
++    			msmFreePointer((void**)&label);
 +			return -1;
 +		    }
 +
-+		    strncpy(tmp, define->name, strlen(define->name));
-+		    strncpy(tmp + strlen(define->name), sep, 2);
-+
-+		    if (strstr(ASCII(label), tmp) != ASCII(label)) { //label name should be prefixed by domain name and "::"
-+			rpmlog(RPMLOG_ERR, "Label name %s isn't prefixed by domain name %s. Can't define such domain\n", ASCII(label), define->name);
-+			msmFreePointer((void**)&label);
-+		    	msmFreePointer((void**)&tmp);
-+			return -1;
-+		    } 
-+
-+		    msmFreePointer((void**)&tmp);
-+
-+		    if (msmVerifySmackLabel(ASCII(label) + strlen(define->name) + 2) < 0) {
-+			msmFreePointer((void**)&label);
-+			return -1;
-+		    }
 +		    d_provide_x *provide = calloc(1, sizeof(d_provide_x));
 +		    if (provide) {
 +			provide->label_name = ASCII(label);
@@ -3747,8 +3771,6 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +    return ret;
 +}
 +
-+
-+
 +static filesystem_x *msmFreeFilesystem(filesystem_x *filesystem)
 +{    
 +	if (filesystem) {
@@ -3781,7 +3803,6 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +		return NULL;
 +
 +}
-+
 +
 +static interface_x *msmFreeInterface(interface_x *interface)
 +{    
@@ -3864,7 +3885,6 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +    }
 +    return prev;
 +}
-+
 +
 +static file_x *msmFreeFile(file_x *file)
 +{
@@ -3961,6 +3981,7 @@ diff -Nuarp rpm/security/msmmanifest.c rpm-security/security/msmmanifest.c
 +    d_permit_x *next = d_permit->next;
 +    rpmlog(RPMLOG_DEBUG, "freeing domain permit %s\n", d_permit->label_name);
 +    msmFreePointer((void**)&d_permit->label_name);
++    msmFreePointer((void**)&d_permit->to_label_name);
 +    msmFreePointer((void**)&d_permit->ac_type);
 +    msmFreePointer((void**)&d_permit);
 +    return next;
@@ -4152,7 +4173,7 @@ diff -Nuarp rpm/security/msmmatch.c rpm-security/security/msmmatch.c
 diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 --- rpm/security/msmxattr.c	1970-01-01 02:00:00.000000000 +0200
 +++ rpm-security/security/msmxattr.c	2012-08-06 13:37:44.891344948 +0300
-@@ -0,0 +1,1328 @@
+@@ -0,0 +1,1344 @@
 +/*
 + * This file is part of MSM security plugin
 + * Greatly based on the code of MSSF security plugin
@@ -4210,6 +4231,7 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +	HASH_CLEAR(hh,allpackages);
 +    }
 +}
++
 +static int msmCheckACDomainRules(ac_domain_x *ac_domain, 
 +				    sw_source_x *requested, sw_source_x *provided)
 +{
@@ -4218,6 +4240,7 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +    /* go through sw source and its parents: ac domains must not match */
 +    /* deny or deny wildcards and must match allow or allow wildcards */
 +    /* in the whole path up to the level of the providing sw source */ 
++
 +    for (sw_source = requested; sw_source->parent && sw_source->parent != sw_source; sw_source = sw_source->parent) {
 +	ac_domain_x *denied;
 +	ac_domain_x *allowed;
@@ -4243,6 +4266,20 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +    return 1; /* still here, allow for root sw source */
 +}
 +
++static int msmCheckLabelProvisioning(manifest_x *mfx, const char* label) 
++{
++
++    d_provide_x *provide = NULL;
++
++    if ((mfx) && (label) && (mfx->define) && (mfx->define->d_provides)) {
++	    for (provide = mfx->define->d_provides; provide; provide = provide->prev) {
++		if ( strcmp(provide->label_name, label) == 0 )
++			return 0;
++	    }
++    }
++    rpmlog(RPMLOG_ERR, "Label %s hasn't been provided in the manifest\n", label);
++    return -1;
++}
 +
 +static int msmSetSmackRules(struct smack_accesses *smack_accesses, ac_domain_x *ac_domains, const char *aid)
 +{
@@ -4268,7 +4305,6 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +
 +}
 +
-+
 +static int msmIsProvideAllowed(ac_domain_x *provided, sw_source_x *sw_source, const char *origin)
 +{
 +
@@ -4293,7 +4329,6 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +
 +    return msmCheckACDomainRules(provided, sw_source, provided->sw_source);
 +}
-+
 +
 +static int msmSetSmackProvide(struct smack_accesses *smack_accesses, provide_x *provide, sw_source_x *sw_source)
 +{
@@ -4332,6 +4367,7 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +    /* NOTE: Creating zypper repos manually here! */
 +    /* A library call would be the correct way, but calling c++ from c */
 +    /* is not nice. On the other hand, now there is no libzypp dependency. */
++
 +    char *sysconfdir = rpmExpand("%{?_sysconfdir}", NULL);
 +    if (!sysconfdir || !strcmp(sysconfdir, "")) {
 +	rpmlog(RPMLOG_ERR, "Failed to expand %%_sysconfdir macro\n");
@@ -4538,7 +4574,6 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +    return 0;
 +}
 +
-+
 +static void msmRemoveDBusConfig(package_x *package, dbus_x *dbuss)
 +{
 +    dbus_x *dbus;
@@ -4669,7 +4704,6 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +    return 0;
 +}
 +
-+
 +static int msmSetupDBusConfig(package_x *package, dbus_x *dbus, int phase)
 +{
 +    char path[NAME_MAX+1];
@@ -4796,19 +4830,64 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +    } else return 0;
 +
 +    return msmCheckACDomainRules(provided, mfx->sw_source, provided->sw_source);
-+
-+
 +}
 +
-+int msmSetupRequests(manifest_x *mfx){
++static int msmCheckDomainJoinPossibility(manifest_x *mfx, ac_domain_x *defined_ac_domain) 
++{
++
++    char *tmp = NULL, *pch = NULL;
++    unsigned int found = 0;
++
++    if ((!mfx) || (!defined_ac_domain))
++    	return -1; 
++
++    if (defined_ac_domain->type) {
++	if (strcmp(defined_ac_domain->type, "restricted") == 0) {
++		if (defined_ac_domain->plist) {
++			tmp = calloc(strlen(defined_ac_domain->plist) + 1, sizeof(char));
++			if (!tmp) return -1; 
++			strncpy(tmp, defined_ac_domain->plist, strlen(defined_ac_domain->plist));
++			pch = strtok (tmp, ", ");
++			while (pch != NULL)
++			{
++				if (strcmp(pch, mfx->name) == 0) {
++					found = 1; 
++					break;
++				}					
++				pch = strtok(NULL, ", ");
++			}
++			msmFreePointer((void**)&tmp);
++		}
++		if (found != 1) {
++	   		rpmlog(RPMLOG_ERR, "Request for a domain name %s isn't allowed ", mfx->request->ac_domain);
++	   		rpmlog(RPMLOG_ERR, "because ac domain is marked as restricted\n");
++		   	return -1;
++		}
++   	} else if (strcmp(defined_ac_domain->type, "shared") == 0) {
++	   	return 0;			
++   	} else {
++	   	// domain hasn't been marked as shared 
++	   	rpmlog(RPMLOG_ERR, "Request for a domain name %s isn't allowed ", mfx->request->ac_domain);
++	   	rpmlog(RPMLOG_ERR, "because ac domain is marked as private\n");
++		return -1;
++	}
++   } else { 
++	// by default ac domains are private
++   	rpmlog(RPMLOG_ERR, "Request for a domain name %s isn't allowed ", mfx->request->ac_domain);
++	rpmlog(RPMLOG_ERR, "because ac domain is marked as private\n");
++	return -1;
++  }
++
++  return 0;
++}
++
++int msmSetupRequests(manifest_x *mfx) 
++{
 +
 +  	ac_domain_x *defined_ac_domain = NULL; 
 +
-+	if (!mfx->request) 
-+		return 0;
-+
-+	if (!mfx->request->ac_domain) 
-+		return 0;
++	if ((!mfx) || (!mfx->request) || (!mfx->request->ac_domain))
++		return -1;
 +	
 +	HASH_FIND(hh, all_ac_domains, mfx->request->ac_domain, strlen(mfx->request->ac_domain), defined_ac_domain);
 +	if (!defined_ac_domain){ // request for a undefined domain. 
@@ -4816,55 +4895,21 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +		return -1;
 +	}
 +
-+	//now check that this ac_domain can be requested
++	//now check that the package can join the requested AC domain
 +
-+        if (mfx->define){
++       if (mfx->define){
 +		rpmlog(RPMLOG_DEBUG, "mfx->define->name %s mfx->request->ac_domain %s\n", mfx->define->name, mfx->request->ac_domain);
 +		if (strcmp(mfx->define->name, mfx->request->ac_domain) == 0)
-+			//ac domain is requested from the same package where it was define. this case is always allowed
++			//ac domain is requested from the same package where it was define. This case is always allowed
 +			return 0;		
 +	} 
-+	//need to check if developer allowed other packages to request this domain
-+	if (defined_ac_domain->type) {
-+		if (strcmp(defined_ac_domain->type, "restricted") == 0) {
-+			if (defined_ac_domain->plist){
-+				unsigned int found = 0;
-+				char *tmp = calloc(strlen(defined_ac_domain->plist) + 1, sizeof(char));
-+				if (tmp) {
-+					strncpy(tmp, defined_ac_domain->plist, strlen(defined_ac_domain->plist));
-+					char *pch = strtok (tmp,", ");
-+					while (pch != NULL)
-+					  {
-+					    if (strcmp(pch,mfx->name) == 0) {
-+						found = 1; 
-+						break;
-+					    }					
-+					    pch = strtok(NULL, ", ");
-+					  }
-+					msmFreePointer((void**)&tmp);
-+				}
-+				if (found != 1) {
-+					rpmlog(RPMLOG_ERR, "Request for a domain name %s isn't allowed because ac domain is restricted\n", mfx->request->ac_domain);
-+					return -1;
-+				}
-+			} else {
-+				rpmlog(RPMLOG_ERR, "Request for a domain name %s isn't allowed because ac domain is restricted\n", mfx->request->ac_domain);
-+				return -1;
-+			}
-+		} else if (strcmp(defined_ac_domain->type, "shared") != 0) {
-+			// domain hasn't been marked as shared 
-+			rpmlog(RPMLOG_ERR, "Request for a domain name %s isn't allowed because ac domain is marked as private\n", mfx->request->ac_domain);
-+			return -1;
-+			
-+		}
-+	} else { 
-+		// by default ac domains are private
-+		rpmlog(RPMLOG_ERR, "Request for a domain name %s isn't allowed because ac domain is marked as private\n", mfx->request->ac_domain);
++
++	//need to check if developer allowed other packages to join this domain
++	if (msmCheckDomainJoinPossibility(mfx, defined_ac_domain) < 0 )
 +		return -1;
-+	}
 +	
++	// now checking if security policy allows to join this domain
 +	if (msmIsRequestAllowed(mfx, defined_ac_domain)) {
-+		// request is allowed by domain policy
 +	    rpmlog(RPMLOG_INFO, "Request for a domain name %s is allowed based on package sw source\n", mfx->request->ac_domain);
 +	    return 0;
 +		
@@ -4878,6 +4923,7 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +{
 +    provide_x *provide;
 +    ac_domain_x *ac_domain;
++
 +    for (provide = package->provides; provide; provide = provide->prev) {
 +	for (ac_domain = provide->ac_domains; ac_domain; ac_domain = ac_domain->prev) {
 +	    ac_domain_x *current_d = NULL;
@@ -4914,7 +4960,8 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +    return 0;
 +}
 +
-+int msmSetupDBusPolicies(package_x *package) {
++int msmSetupDBusPolicies(package_x *package) 
++{
 +
 +	dbus_x *session = NULL;
 +	dbus_x *system = NULL;
@@ -4939,44 +4986,55 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +
 +}
 +
-+
-+static int msmCheckDomainRequest(manifest_x *mfx, char* requested){
++static int msmCheckDomainRequestOrPermit(manifest_x *mfx, const char* domain) 
++{
 +
 +  	ac_domain_x *defined_ac_domain = NULL; 
++	char* name = NULL;
 +
-+	if (!mfx) 
++	if ((!mfx) || (!domain))
 +		return -1;
 +
-+	if (!requested) 
-+		return -1;
++	name = calloc(strlen(domain) + 1, sizeof(char));
++	if (!name) return -1;
++	strncpy(name, domain, strlen(domain));
++	strtok(name, ":");  // remove label name if present
++	rpmlog(RPMLOG_DEBUG, "label name %s domain name %s \n", domain, name);
 +	
-+	HASH_FIND(hh, all_ac_domains, requested, strlen(requested), defined_ac_domain);
-+	if (!defined_ac_domain){ // request for a undefined domain. 
-+		rpmlog(RPMLOG_ERR, "A domain name %s that hasn't been yet defined by any package. Can't verify if request is allowed\n", requested);
++	HASH_FIND(hh, all_ac_domains, name, strlen(name), defined_ac_domain);
++	if (!defined_ac_domain) { // request or permit for an undefined domain. 
++		rpmlog(RPMLOG_ERR, "A domain name %s hasn't been yet defined by any package. Can't verify if it is allowed\n", name);
++		msmFreePointer((void**)&name);
 +		return -1;
 +	}
 +
 +	//now check that this ac_domain can be requested
 +
-+        if (mfx->define){
-+		rpmlog(RPMLOG_DEBUG, "mfx->sw_source->name %s requested %s\n", mfx->sw_source->name, requested);
-+		if (strcmp(mfx->sw_source->name, requested) == 0)
-+			//ac domain access is requested from the same package where it was define. this case is always allowed
++        if ((mfx->define) && (mfx->define->name)) {
++		rpmlog(RPMLOG_DEBUG, "mfx->define->name %s domain %s\n", mfx->define->name, name);
++		if (strcmp(mfx->define->name, name) == 0) {
++			// AC domain access is requested or permitted from the same package where it was defined. 
++			// This case is always allowed
++			msmFreePointer((void**)&name);
 +			return 0;		
-+	} 
-+	// no need to check if developer allowed other packages to request this domain, because this isn't a request to belong to a domain, but request to domain access
++		}
++	 } 
++
++	 // no need to check if developer allowed other packages to request/permit this domain
++        // because this isn't a request to belong to a domain, but request/permit for domain access
 +	
 +	if (msmIsRequestAllowed(mfx, defined_ac_domain)) {
-+		// request is allowed by domain policy
-+	    rpmlog(RPMLOG_DEBUG, "Request to access a domain name %s is allowed based on package sw source\n", requested);
++	    // request or permit is allowed by domain policy
++	    rpmlog(RPMLOG_DEBUG, "Request/Permit to access a domain name %s is allowed based on package sw source\n", name);
++	    msmFreePointer((void**)&name);
 +	    return 0;
 +		
 +	} else {
-+	    rpmlog(RPMLOG_ERR, "Request to access a domain name %s isn't allowed based on package sw source\n", requested);
++	    rpmlog(RPMLOG_ERR, "Request/Permit to access a domain name %s isn't allowed based on package sw source\n", name);
++	    msmFreePointer((void**)&name);
 +	    return -1;
 +	}
 +}
-+
 +
 +int msmSetupDefine(struct smack_accesses *smack_accesses, manifest_x *mfx)
 +{
@@ -4985,10 +5043,11 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +    ac_domain_x * defined_ac_domain = NULL;
 +    int ret;
 +
-+    if (!mfx->define->name) {
-+			rpmlog(RPMLOG_ERR, "Failed to setup define with empty name\n");
-+			return -1;
++    if ( (!mfx) || (!mfx->define) || (!mfx->define->name)) {
++	rpmlog(RPMLOG_ERR, "Failed to setup define with empty name\n");
++	return -1;
 +    }
++
 +    /* need to check if domain hasn't been already defined by other package */
 +
 +    HASH_FIND(hh, all_ac_domains, mfx->define->name, strlen(mfx->define->name), defined_ac_domain);
@@ -5003,20 +5062,10 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +
 +    if (mfx->define->d_requests) {
 +	    for (d_request = mfx->define->d_requests; d_request; d_request = d_request->prev) {
-+
 +			// first check if the current's package sw source can grant access to requested domain
-+			char* name = calloc(strlen(d_request->label_name) + 1, sizeof(char));
-+			if (!name) return -1;
-+			strncpy(name, d_request->label_name, strlen(d_request->label_name));
-+			strtok(name, ":");// remove label name if present
-+			rpmlog(RPMLOG_DEBUG, "label name %s domain name %s \n", d_request->label_name, name);
-+                       ret = msmCheckDomainRequest(mfx, name);
-+			msmFreePointer((void**)&name);
-+			if (ret < 0) {
++			if ( msmCheckDomainRequestOrPermit(mfx, d_request->label_name) < 0 )
 +				return -1;
-+			}
-+			ret = smack_accesses_add(smack_accesses, mfx->define->name, d_request->label_name, d_request->ac_type);
-+			if (ret < 0) {
++			if ( smack_accesses_add(smack_accesses, mfx->define->name, d_request->label_name, d_request->ac_type) < 0 ) {
 +				rpmlog(RPMLOG_ERR, "Failed to set smack rules for domain requests\n");
 +				return -1;
 +			}	
@@ -5026,19 +5075,25 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +
 +    if (mfx->define->d_permits) {
 +	    for (d_permit = mfx->define->d_permits; d_permit; d_permit = d_permit->prev) {
-+			ret = smack_accesses_add(smack_accesses, d_permit->label_name, mfx->define->name, d_permit->ac_type);
++			// first check if the current's package sw source can grant access to permited domain
++			if ( msmCheckDomainRequestOrPermit(mfx, d_permit->label_name) < 0 )
++				return -1;
++			if (!d_permit->to_label_name)
++				ret = smack_accesses_add(smack_accesses, d_permit->label_name, mfx->define->name, d_permit->ac_type);
++			else {
++				if ( msmCheckLabelProvisioning(mfx, d_permit->to_label_name) < 0 )
++					return -1;
++				ret = smack_accesses_add(smack_accesses, d_permit->label_name, d_permit->to_label_name, d_permit->ac_type);
++			}
 +			if (ret < 0) {
 +				rpmlog(RPMLOG_ERR, "Failed to set smack rules for domain permits\n");
 +				return -1;
 +			}	
-+	
 +	    }
 +    }
-+
 + 
 +    return 0;
 +}
-+
 +
 +package_x *msmCreatePackage(const char *name, sw_source_x *sw_source, provide_x *provides, const char *modified)
 +{
@@ -5065,8 +5120,8 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +    return NULL;
 +}
 +
-+int msmSetupSmackRules(struct smack_accesses *smack_accesses, const char* package_name, int flag, int SmackEnabled){
-+
++int msmSetupSmackRules(struct smack_accesses *smack_accesses, const char* package_name, int flag, int SmackEnabled)
++{
 +    int ret = 0;
 +    char * buffer = calloc(strlen(SMACK_RULES_PATH) + strlen(package_name) + 1, sizeof(char));
 +    if (!buffer) return -1;    
@@ -5128,6 +5183,7 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +    return 0;	
 +
 +}
++
 +int msmSetupPackages(struct smack_accesses *smack_accesses, package_x *packages, sw_source_x *sw_source)
 +{
 +    package_x *package, *first = NULL;
@@ -5173,7 +5229,6 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +    }
 +    return 0;
 +}
-+
 +
 +package_x *msmCheckPackage(const char *name)
 +{
@@ -5237,31 +5292,31 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +    }
 +}
 +
-+static int is_executable(const char* path) {
++static int is_executable(const char* path) 
++{
++   char buffer[1024];
++   int result;
++   char string[] = "file \"";
++   char* ptr = NULL, *ptr1 = NULL;
++   FILE* pipe;
 +
-+ char buffer[1024];
-+ int result;
-+ char string[] = "file \"";
-+ char* ptr = NULL, *ptr1 = NULL;
-+ FILE* pipe;
-+
-+ if (!path)
++   if (!path)
 +	return -1;
 +
-+ char* str = calloc(strlen(path) + 8, sizeof (char*));
-+ strncpy(str, string, 6);
-+ strncpy(str + 6, path, strlen(path));
-+ strncpy(str + 6 + strlen(path), "\"", 1);
++   char* str = calloc(strlen(path) + 8, sizeof (char*));
++   strncpy(str, string, 6);
++   strncpy(str + 6, path, strlen(path));
++   strncpy(str + 6 + strlen(path), "\"", 1);
 +
-+ pipe = popen(str, "r");
-+ if (!pipe) {
-+   msmFreePointer((void**)&str);
-+   return -1;
-+ }
++   pipe = popen(str, "r");
++   if (!pipe) {
++     msmFreePointer((void**)&str);
++     return -1;
++   }
 +
-+ result = -1; 
++   result = -1; 
 +
-+ if(fgets(buffer, 1023, pipe) != NULL) {
++   if(fgets(buffer, 1023, pipe) != NULL) {
 +	ptr = strchr(buffer,':');
 +	if (ptr!= NULL) { 
 +		ptr1 = strstr(ptr,"executable");
@@ -5269,15 +5324,15 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +		ptr1 = strstr(ptr,"ELF");
 +		if (ptr1) result = 0;		
 +	}
-+ }
++   }
 +
-+ msmFreePointer((void**)&str);
-+ pclose(pipe);
-+ return result;
++   msmFreePointer((void**)&str);
++   pclose(pipe);
++   return result;
 +}
 +
-+int msmSetFileXAttributes(manifest_x *mfx, const char* filepath) {
-+
++int msmSetFileXAttributes(manifest_x *mfx, const char* filepath) 
++{
 +    provide_x *provide = NULL;
 +    filesystem_x *filesystem = NULL;
 +    int fd;
@@ -5301,7 +5356,10 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +			    if (filesystem->type) type = filesystem->type;
 +			    goto found;
 +			}
++
 +			len = strlen(filesystem->path);
++			rpmlog(RPMLOG_DEBUG, "filesystem->path: %s, length %d\n", filesystem->path, len);
++			rpmlog(RPMLOG_DEBUG, "filesystem->path + len - 1: %s\n", filesystem->path + len - 1);
 +			if (len > match) {
 +			    if ((!strncmp(filepath, filesystem->path, len)) && (filesystem->type)) {
 +				/* partial match and the directory marked as transmutable*/
@@ -5309,6 +5367,14 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +			    	exec_label = filesystem->exec_label;
 +				match = len;
 +			    }
++			    if (!strncmp(filesystem->path + len - 1, "*", 1)) { 
++			    	if (!strncmp(filepath, filesystem->path, len - 1))  {
++				    /* partial match and the path is marked with wildcard*/
++				    label = filesystem->label;
++			    	    exec_label = filesystem->exec_label;
++				    match = len - 1;
++			    	}
++ 			    }
 +			}
 +		}
 +	}
@@ -5397,40 +5463,12 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +
 +    	close(fd);
 +
-+
-+
 +    return 0;
 +
 +}
 +
-+
-+#if 0
-+
-+static void msmRemoveObjectRules(SmackRuleSet rule_set, const char *name, package_x *package )
-+{
-+    if (package) {
-+	provide_x *provide;
-+	ac_domain_x *ac_domain;
-+	for (provide = package->provides; provide; provide = provide->prev) {
-+	    for (ac_domain = provide->ac_domains; ac_domain; ac_domain = ac_domain->prev) {
-+		if (!strcmp(name, ac_domain->name)) {
-+		    name = NULL; /* don't remove this one, it's in upgrade */
-+		    goto out;
-+		}
-+	    }
-+	}
-+    }
-+ out:
-+    if (name) {
-+	rpmlog(RPMLOG_INFO, "removing smack object rules for %s\n", name);
-+	smack_rule_set_remove_by_object(rule_set, name, NULL);
-+    }
-+}
-+#endif
-+
 +void msmRemoveRules(struct smack_accesses *smack_accesses, manifest_x *mfx, int SmackEnabled)
 +{
-+
 +    provide_x *provide;
 +    package_x *package;
 +
@@ -5451,7 +5489,6 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +    }
 +
 +}
-+
 +
 +void msmRemoveConfig(manifest_x *mfx)
 +{

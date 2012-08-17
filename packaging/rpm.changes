@@ -1,3 +1,9 @@
+* Tue Sep 4 2012 Elena Reshetova <elena.reshetova@intel.com> - 4.9.0
+- Changes to the security plugin
+  - Adding an option to specify wildcards in file paths (bug TDIS-121)
+  - Adding a possibility to specify more fine-grained permits (bug TDIS-120)
+  - Minor cosmetic fixes
+
 * Tue Aug 21 2012 William Douglas <william.douglas@intel.com> submit/trunk/2012-08-08.064212@5befd2c
 - Fix stripping for kernel modules.
 
