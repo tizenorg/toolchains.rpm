@@ -1,3 +1,6 @@
+* Tue Aug 21 2012 William Douglas <william.douglas@intel.com> submit/trunk/2012-08-08.064212@aa8ef92
+- Revert 88da3b2439b41193f3d964db7d4a7f0e8321c8f1
+
 * Wed Aug 08 2012 Elena Reshetova <elena.reshetova@intel.com> - 4.9.0
 - Changes to the security plugin
   - Moving the setup of xattr to the FSM_CLOSED hook
