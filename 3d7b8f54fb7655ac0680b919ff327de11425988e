@@ -1,0 +1,8 @@
+Change-Id: I3d7b8f54fb7655ac0680b919ff327de11425988e
+Code-Review+2: KevinWang <kevin.a.wang@intel.com>
+Verified+1: KevinWang <kevin.a.wang@intel.com>
+Submitted-by: KevinWang <kevin.a.wang@intel.com>
+Submitted-at: Fri, 31 Aug 2012 18:13:29 +0900
+Reviewed-on: http://review.tizen.org/gerrit/1584
+Project: base/rpm
+Branch: refs/heads/master
