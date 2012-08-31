@@ -9,7 +9,7 @@
 
 %define rpmhome /usr/lib/rpm
 
-%define rpmver 4.9.0
+%define rpmver 4.9.1
 
 
 Summary: The RPM package management system
@@ -17,7 +17,7 @@ Name: rpm-python
 Version: %{rpmver}
 Release: 1
 BuildRequires: python-devel
-%{expand:%(sed -n -e '/^Source0:/,/^##PYTHON##/p' <%_sourcedir/rpm.spec)}
+%{expand:%(sed -n -e '/^Source1001:/d' -e '/^Source0:/,/^##PYTHON##/p' <%_sourcedir/rpm.spec)}
 Source100: rpm.spec
 Source1001: packaging/rpm-python.manifest 
 Requires: popt >= 1.10.2.1
@@ -28,7 +28,6 @@ BuildRequires: db4-devel
 
 # XXX generally assumed to be installed but make it explicit as rpm
 # is a bit special...
-BuildRequires: tizen-rpm-config
 BuildRequires: gawk
 BuildRequires: elfutils-devel >= 0.112
 BuildRequires: elfutils-libelf-devel
@@ -36,13 +35,17 @@ BuildRequires: readline-devel zlib-devel
 BuildRequires: nss-devel
 # The popt version here just documents an older known-good version
 BuildRequires: popt-devel >= 1.10.2
-BuildRequires: file-devel
+BuildRequires: libfile-devel
 BuildRequires: gettext-devel
 BuildRequires: ncurses-devel
 BuildRequires: bzip2-devel >= 0.9.0c-2
-BuildRequires: lua-devel >= 5.1
+BuildRequires: liblua-devel >= 5.1
 BuildRequires: libcap-devel
 BuildRequires: xz-devel >= 4.999.8
+BuildRequires: uthash-devel
+BuildRequires: libxml2-devel
+BuildRequires: libattr-devel
+BuildRequires: pkgconfig(libsmack)
 
 
 %description
