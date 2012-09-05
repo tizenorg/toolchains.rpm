@@ -1605,11 +1605,11 @@ diff -Nuarp rpm/security/msm.c rpm-security/security/msm.c
 +
 +    fileconflict *fc;
 +    packagecontext *ctx = context;
-+    if (!ctx) return RPMRC_FAIL;
-+
++    if (!ctx) return RPMRC_FAIL; 
++   
 +    ctx->path = getFilePath(fsm->dirName, fsm->baseName);
-+    rpmlog(RPMLOG_DEBUG, "Constructed file name: %s \n", ctx->path);
-+ 
++
++    rpmlog(RPMLOG_DEBUG, "Constructed file name: %s\n", ctx->path); 
 +    HASH_FIND(hh, allfileconflicts, ctx->path, strlen(ctx->path), fc);
 +    if (fc) {
 +	/* There is a conflict, see if we are not allowed to overwrite */
@@ -1697,15 +1697,15 @@ diff -Nuarp rpm/security/msm.c rpm-security/security/msm.c
 +		        LISTADD(ctx->mfx->files, file);
 +		        ctx->path = NULL;
 +		        ctx->ino = 0;
-+	        }
-+
-+    		if (rpmteType(ctx->te) == TR_ADDED) {
-+	        	if (msmSetFileXAttributes(ctx->mfx, file->path) < 0) {
-+		        	rpmlog(RPMLOG_ERR, "Setting of extended attributes failed for file %s from package %s\n",
++    			if (rpmteType(ctx->te) == TR_ADDED) {
++	        			if (msmSetFileXAttributes(ctx->mfx, file->path) < 0) {
++		        		rpmlog(RPMLOG_ERR, "Setting of extended attributes failed for file %s from package %s\n",
 +			           		file->path, rpmteN(ctx->te));
-+				return RPMRC_FAIL;
-+		        }
-+    		} 
++					return RPMRC_FAIL;
++		        	}
++    			} 
++
++	        }
 +	    } else {
 +        	rpmlog(RPMLOG_ERR, "Manifest is missing while it should be present for the package %s\n",
 +			   rpmteN(ctx->te));
@@ -4173,7 +4173,7 @@ diff -Nuarp rpm/security/msmmatch.c rpm-security/security/msmmatch.c
 diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 --- rpm/security/msmxattr.c	1970-01-01 02:00:00.000000000 +0200
 +++ rpm-security/security/msmxattr.c	2012-08-06 13:37:44.891344948 +0300
-@@ -0,0 +1,1344 @@
+@@ -0,0 +1,1331 @@
 +/*
 + * This file is part of MSM security plugin
 + * Greatly based on the code of MSSF security plugin
@@ -5335,7 +5335,7 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +{
 +    provide_x *provide = NULL;
 +    filesystem_x *filesystem = NULL;
-+    int fd;
++    
 +    size_t len = 0, match = 0;
 +    const char *label = NULL;
 +    const char *exec_label = NULL;
@@ -5412,23 +5412,10 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +	     }
 +	} 
 + 
-+	fd = open(filepath, O_RDONLY);
-+	if (fd == -1) {
-+	    rpmlog(RPMLOG_ERR, "Failed to open %s: %s\n", 
-+		   filepath, strerror(errno));
-+	    return -1;
-+	}
-+	
-+	if (fstat(fd, &st) == -1) {
-+	    rpmlog(RPMLOG_ERR, "fstat failed for %s: %s\n", 
-+		   filepath, strerror(errno));
-+	    close(fd);
-+	    return -1;
-+	}
 +
 +	rpmlog(RPMLOG_INFO, "setting SMACK64 %s for %s\n", label, filepath);
 +
-+	if (fsetxattr(fd, SMACK64, label, strlen(label), 0) < 0 ) {
++	if (lsetxattr(filepath, SMACK64, label, strlen(label), 0) < 0 ) {
 +	    rpmlog(RPMLOG_ERR, "Failed to set SMACK64 %s for %s: %s\n", 
 +		   label, filepath, strerror(errno));
 +	}
@@ -5439,7 +5426,7 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +			rpmlog(RPMLOG_INFO, "not setting SMACK64EXEC for %s as requested in manifest\n", filepath);
 +		} else {
 +			rpmlog(RPMLOG_INFO, "setting SMACK64EXEC %s for %s\n", exec_label, filepath);
-+			if ( fsetxattr(fd, SMACK64EXEC, exec_label, strlen(exec_label), 0) < 0 ) {
++			if (lsetxattr(filepath, SMACK64EXEC, exec_label, strlen(exec_label), 0) < 0 ) {
 +		    		rpmlog(RPMLOG_ERR, "Failed to set SMACK64EXEC %s for %s: %s\n", 
 +			   		exec_label, filepath, strerror(errno));
 +			}
@@ -5450,7 +5437,7 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +		if (S_ISDIR(st.st_mode)) { //check that it is a directory
 +			char at_true[] = "TRUE";
 +			rpmlog(RPMLOG_INFO, "setting SMACK64TRANSMUTE %s for %s\n", at_true, filepath);
-+			if ( fsetxattr(fd, SMACK64TRANSMUTE, at_true, strlen(at_true), 0) < 0 ) {
++			if ( lsetxattr(filepath, SMACK64TRANSMUTE, at_true, strlen(at_true), 0) < 0 ) {
 +			    rpmlog(RPMLOG_ERR, "Failed to set SMACK64TRANSMUTE %s for %s: %s\n", 
 +				   at_true, filepath, strerror(errno));
 +			}
@@ -5461,7 +5448,7 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +	
 +	}
 +
-+    	close(fd);
++    
 +
 +    return 0;
 +

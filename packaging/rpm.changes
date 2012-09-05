@@ -1,3 +1,8 @@
+* Wed Sep 5 2012 Elena Reshetova <elena.reshetova@intel.com> - 4.9.0
+- Changes to the security plugin
+  - Removing the fopen check before setting xattr
+  - Changing fsetxattr to lsetxattr
+
 * Tue Sep 4 2012 Elena Reshetova <elena.reshetova@intel.com> - 4.9.0
 - Changes to the security plugin
   - Adding an option to specify wildcards in file paths (bug TDIS-121)
