@@ -1,3 +1,7 @@
+* Thu Sep 6 2012 Elena Reshetova <elena.reshetova@intel.com> - 4.9.0
+- Changes to the security plugin
+  - Using libmagic instead of file utility to check file's content
+
 * Wed Sep 5 2012 Elena Reshetova <elena.reshetova@intel.com> - 4.9.0
 - Changes to the security plugin
   - Removing the fopen check before setting xattr
