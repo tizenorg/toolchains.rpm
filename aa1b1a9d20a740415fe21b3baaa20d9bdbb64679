@@ -1,0 +1,8 @@
+Change-Id: Iaa1b1a9d20a740415fe21b3baaa20d9bdbb64679
+Code-Review+2: KevinWang <kevin.a.wang@intel.com>
+Verified+1: Elena Reshetova <elena.reshetova@intel.com>
+Submitted-by: KevinWang <kevin.a.wang@intel.com>
+Submitted-at: Fri, 30 Nov 2012 17:53:51 +0900
+Reviewed-on: http://review.tizen.org/gerrit/1687
+Project: toolchains/rpm
+Branch: refs/heads/master
