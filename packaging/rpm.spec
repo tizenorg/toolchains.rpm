@@ -139,7 +139,6 @@ that are used to build packages using the RPM Package Manager.
 Summary: MSM security plugin for rpm
 Group: Development/Libraries
 Requires: rpm = %{version}-%{release}
-Requires: file
 
 %description security-plugin
 This package contains the MSM security plugin for rpm that performs
