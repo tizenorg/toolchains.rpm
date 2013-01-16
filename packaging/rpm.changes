@@ -1,3 +1,6 @@
+* Wed Jan 16 21:49:25 UTC 2013 - tracy.graydon@intel.com
+- DEVT-41: Fix the optflags patch to deal with the architecture issue with gbs.
+
 * Thu Sep 6 2012 Elena Reshetova <elena.reshetova@intel.com> - 4.9.0
 - Changes to the security plugin
   - Using libmagic instead of file utility to check file's content
