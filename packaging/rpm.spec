@@ -179,10 +179,7 @@ rm -f rpmdb/db.h
 %patch86 -p1
 %patch87 -p1 -b .msm
 %patch90 -p1
-<<<<<<< HEAD
 %patch100 -p1
-=======
->>>>>>> 6863478... fixed optflags and perl auto-dependencies
 
 
 rm -f m4/libtool.m4
