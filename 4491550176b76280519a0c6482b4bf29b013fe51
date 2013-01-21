@@ -1,0 +1,9 @@
+Change-Id: I81e9cab948c823870712e225b79b9bed8aeb507c
+Code-Review+2: Tracy Graydon <tracy.graydon@intel.com>
+Verified+1: Tracy Graydon <tracy.graydon@intel.com>
+Verified+1: Mikko Ylinen <mikko.ylinen@intel.com>
+Submitted-by: Tracy Graydon <tracy.graydon@intel.com>
+Submitted-at: Tue, 22 Jan 2013 03:56:18 +0900
+Reviewed-on: http://review.tizen.org/gerrit/2691
+Project: toolchains/rpm
+Branch: refs/heads/master
