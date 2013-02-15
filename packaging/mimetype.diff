@@ -1,0 +1,24 @@
+Index: autodeps/linux.prov
+===================================================================
+--- autodeps/linux.prov.orig
++++ autodeps/linux.prov
+@@ -11,6 +11,7 @@ solist=($(printf "%s\n" "${filelist[@]}"
+ pythonlist=
+ tcllist=
+ monolist=($(printf "%s\n" "${filelist[@]}" | egrep "\\.(exe|dll)\$"))
++mimetypelist=($(printf "%s\n" "${filelist[@]}" | egrep "\\.(desktop)\$"))
+ 
+ #
+ # --- Alpha does not mark 64bit dependencies
+@@ -59,6 +60,11 @@ done | sort -u
+     printf "%s\n" "${tcllist[@]}" | /usr/lib/rpm/tcl.prov | sort -u
+ 
+ #
++# --- mimetypes in .desktop files
++[ -x /usr/lib/rpm/mimetypes.prov -a -n "$mimetypelist" ] &&
++    printf "%s\n" "${mimetypelist[@]}" | /usr/lib/rpm/mimetypes.prov | sort -u
++
++#
+ # --- Mono exes/dlls
+ : ${MONO_PREFIX=/usr}
+ if [ -x $MONO_PREFIX/bin/mono -a -n "$monolist" ] ; then
