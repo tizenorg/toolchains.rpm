@@ -19,7 +19,6 @@ Release: 4
 %{expand:%(sed -n -e '/^Source0:/,/^##PYTHON##/p' <%_sourcedir/rpm.spec)}
 Source100: rpm.spec
 Source1002: rpm-python.manifest 
-License:        GPLv2+
 Requires: popt >= 1.10.2.1
 
 Requires: rpm = %{version}
