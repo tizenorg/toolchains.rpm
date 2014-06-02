@@ -16,6 +16,7 @@ Summary: The RPM package management system
 Name: rpm-python
 Version: %{rpmver}
 Release: 4
+License: GPLv2+
 %{expand:%(sed -n -e '/^Source0:/,/^##PYTHON##/p' <%_sourcedir/rpm.spec)}
 Source100: rpm.spec
 Source1002: rpm-python.manifest 

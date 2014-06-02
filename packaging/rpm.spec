@@ -8,6 +8,7 @@ Version:        4.9.1
 Release:        %{release_prefix}
 Summary:        The RPM package management system
 Url:            http://www.rpm.org/
+License:        GPLv2+
 Group:          System/Base
 Source0:        http://rpm.org/releases/rpm-4.9.x/rpm-%{version}.tar.bz2
 Source1:        libsymlink.attr
@@ -49,7 +50,6 @@ Patch87:        security_4.9.1.patch
 
 # Partially GPL/LGPL dual-licensed and some bits with BSD
 # SourceLicense: (GPLv2+ and LGPLv2+ with exceptions) and BSD
-License:        GPLv2+
 ##PYTHON##
 
 BuildRequires:  bzip2-devel >= 0.9.0c-2
