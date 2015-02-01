@@ -17,14 +17,15 @@ Name: rpm-python
 Version: %{rpmver}
 Release: 4
 License: GPLv2+
+BuildRequires: python-devel
 %{expand:%(sed -n -e '/^Source0:/,/^##PYTHON##/p' <%_sourcedir/rpm.spec)}
 Source100: rpm.spec
 Source1002: rpm-python.manifest 
 Requires: popt >= 1.10.2.1
-
 Requires: rpm = %{version}
 BuildRequires: db4-devel
-BuildRequires: python-devel
+
+
 # XXX generally assumed to be installed but make it explicit as rpm
 # is a bit special...
 BuildRequires: gawk
@@ -58,6 +59,7 @@ the package like its version, a description, etc.
 %{expand:%(sed -n -e '/^%%prep/,/^%%install/p' <%_sourcedir/rpm.spec | sed -e '1d' -e '$d')}
 %install
 rm -rf $RPM_BUILD_ROOT
+
 cp %{SOURCE1002} .
 make DESTDIR="$RPM_BUILD_ROOT" install
 find "%{buildroot}" -not -type d -and -not -path %{buildroot}%{_libdir}/python%{py_ver}/site-packages/rpm/\* -print0 | xargs -0 rm

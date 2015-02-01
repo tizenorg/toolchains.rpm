@@ -14,6 +14,15 @@ Index: rpm-4.9.0/platform.in
 ===================================================================
 --- rpm-4.9.0.orig/platform.in
 +++ rpm-4.9.0/platform.in
+@@ -21,7 +21,7 @@
+ %_exec_prefix		@exec_prefix@
+ %_bindir		@bindir@
+ %_sbindir		@sbindir@
+-%_libexecdir		@libexecdir@
++%_libexecdir		@exec_prefix@/lib
+ %_datarootdir		@datarootdir@
+ %_datadir		@datadir@
+ %_sysconfdir		@sysconfdir@
 @@ -76,6 +76,26 @@
  @redhat@#%defattr(-,root,root,-)\
  @redhat@#%{nil}

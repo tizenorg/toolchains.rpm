@@ -1,4 +1,5 @@
 #!/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 pkg=$1
 if [ "$pkg" = "" -o ! -e "$pkg" ]; then

@@ -3,6 +3,6 @@
                 <domain name="_"/>
         </request>
         <assign>
-                <filesystem path="/bin/*" exec_label="none" />
+                <filesystem path="/usr/bin/*" exec_label="none" />
         </assign>
 </manifest>

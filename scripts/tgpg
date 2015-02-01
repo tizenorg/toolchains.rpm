@@ -1,5 +1,5 @@
 #!/bin/sh
-
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/usr/sbin:/bin:/usr/bin
 
 for pkg in $*
 do

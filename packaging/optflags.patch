@@ -1,8 +1,6 @@
-Index: rpm-4.9.0/rpmrc.in
-===================================================================
---- rpm-4.9.0.orig/rpmrc.in
-+++ rpm-4.9.0/rpmrc.in
-@@ -12,10 +12,10 @@
+--- rpm-4.9.1.orig/rpmrc.in	2014-05-30 11:31:55.031950000 +0900
++++ rpm-4.9.1/rpmrc.in	2014-05-30 11:36:33.899950616 +0900
+@@ -12,16 +12,16 @@
  # "fat" binary with both archs, for Darwin
  optflags: fat -O2 -g -arch i386 -arch ppc
  
@@ -17,6 +15,13 @@ Index: rpm-4.9.0/rpmrc.in
  optflags: pentium3 -O2 -g -march=pentium3
  optflags: pentium4 -O2 -g -march=pentium4
  optflags: athlon -O2 -g -march=athlon
+ optflags: geode -Os -g -m32 -march=geode
+ optflags: ia64 -O2 -g
+-optflags: x86_64 -O2 -g
++optflags: x86_64 %{__global_cflags}
+ optflags: amd64 -O2 -g
+ optflags: ia32e -O2 -g
+ 
 @@ -58,18 +58,19 @@ optflags: hppa2.0 -O2 -g -mpa-risc-1-0
  optflags: mips -O2 -g
  optflags: mipsel -O2 -g
