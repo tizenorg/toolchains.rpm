@@ -39,17 +39,17 @@
 -		     -print |
 -file -N -f - | sed -n -e 's/^\(.*\):[ 	]*.*ELF.*, not stripped/\1/p' |
 -xargs --no-run-if-empty stat -c '%h %D_%i %n' |
-+find $RPM_BUILD_ROOT ! -path "${debugdir}/*.debug" -type f \( -perm +111 -or -name "*.so*" -or -name "*.ko" \) -print 0 | sort -z |
-+xargs --no-run-if-empty -0 stat -c '%h %D_%i %n' |
++find $RPM_BUILD_ROOT ! -path "${debugdir}/*.debug" -type f \( -perm +111 -or -name "*.so*" -or -name "*.ko" \) -print |
++file -N -f - | sed -n -e 's/^\(.*\):[ 	]*.*ELF.*, not stripped/\1/p' |
++xargs --no-run-if-empty stat -c '%h %D_%i %n' |
  while read nlinks inum f; do
 +  case $(objdump -h $f 2>/dev/null | egrep -o '(debug[\.a-z_]*|gnu.version)') in
 +    *debuglink*) continue ;;
 +    *debug*) ;;
 +    *gnu.version*)
-+	echo "WARNING: "`echo $f | sed -e "s,^$RPM_BUILD_ROOT/*,/,"`" is already stripped!"
-+	continue
++	echo "WARNING: "`echo $f | sed -e "s,^$RPM_BUILD_ROOT/*,/,"`" has no debug info!"
 +	;;
-+    *) continue ;;
++    *) ;;
 +  esac
    get_debugfn "$f"
    [ -f "${debugfn}" ] && continue

@@ -1,11 +1,16 @@
 # run internal testsuite?
+%define release_prefix 4.3
 %bcond_without check
+
 
 Name:           rpm
 Version:        4.9.1
-Release:        4
+Release:        %{release_prefix}
 Summary:        The RPM package management system
 Url:            http://www.rpm.org/
+# Partially GPL/LGPL dual-licensed and some bits with BSD
+# SourceLicense: (GPLv2+ and LGPLv2+ with exceptions) and BSD
+License:        GPLv2+
 Group:          System/Base
 Source0:        http://rpm.org/releases/rpm-4.9.x/rpm-%{version}.tar.bz2
 Source1:        libsymlink.attr
@@ -13,7 +18,7 @@ Source11:       db-4.8.30.tar.gz
 Source20:       macros
 Source21:       find-docs.sh
 Source22:       device-sec-policy
-Source1001: packaging/rpm.manifest 
+Source1001:     rpm.manifest 
 
 Patch1:         db.diff
 # quilt patches start here
@@ -44,17 +49,10 @@ Patch84:        rpmbuild_rpmfc_4.9.1_fix.patch
 Patch85:        rpmio_base64_4.9.1_fix.patch
 Patch86:        rpmlib_format_value_4.9.1_fix.patch
 Patch87:        security_4.9.1.patch
-Patch90:        disableperl.patch
-Patch100:       eu-strip.patch
 
-# Partially GPL/LGPL dual-licensed and some bits with BSD
-# SourceLicense: (GPLv2+ and LGPLv2+ with exceptions) and BSD
-License:        GPLv2+
 ##PYTHON##
 
-Requires:       curl
-
-BuildRequires:  bzip2-devel >= 1.0.5
+BuildRequires:  bzip2-devel >= 0.9.0c-2
 BuildRequires:  elfutils-devel >= 0.112
 BuildRequires:  elfutils-libelf-devel
 BuildRequires:  libfile-devel
@@ -123,7 +121,7 @@ Requires:       /bin/grep
 Requires:       /bin/gzip
 Requires:       lzma
 Requires:       patch >= 2.5
-Requires:       pkgconfig
+Requires:       pkg-config
 Requires:       rpm = %{version}
 Requires:       /bin/sed
 Requires:       unzip
@@ -138,6 +136,8 @@ that are used to build packages using the RPM Package Manager.
 Summary: MSM security plugin for rpm
 Group: Development/Libraries
 Requires: rpm = %{version}-%{release}
+Requires: libxml2
+Requires: file
 
 %description security-plugin
 This package contains the MSM security plugin for rpm that performs
@@ -178,8 +178,7 @@ rm -f rpmdb/db.h
 %patch85 -p1
 %patch86 -p1
 %patch87 -p1 -b .msm
-%patch90 -p1
-%patch100 -p1
+
 
 
 rm -f m4/libtool.m4
@@ -201,12 +200,14 @@ libtoolize -f -c
     --localstatedir=%{_localstatedir} \
     --sharedstatedir=%{_localstatedir}/lib \
     --libdir=%{_libdir} \
+    --libexecdir=%{_libexecdir} \
 %if %{with python}
     --enable-python \
 %endif
     --with-lua \
     --with-cap  \
-    --with-msm
+    --with-msm \
+    --disable-dchecks
 
 make %{?_smp_mflags}
 
@@ -216,9 +217,10 @@ make %{?_smp_mflags}
 find %{buildroot} -regex ".*\\.la$" | xargs rm -f --
 
 mkdir -p %{buildroot}%{_sysconfdir}/rpm
-mkdir -p %{buildroot}%{_libdir}/rpm
-install -m 644 %{SOURCE1} %{buildroot}%{_libdir}/rpm/fileattrs/libsymlink.attr
+mkdir -p %{buildroot}%{_libexecdir}/rpm
+install -m 644 %{SOURCE1} %{buildroot}%{_libexecdir}/rpm/fileattrs/libsymlink.attr
 install -m 644 %{SOURCE22} ${RPM_BUILD_ROOT}%{_sysconfdir}/device-sec-policy
+install -m 644 %{SOURCE22} ${RPM_BUILD_ROOT}%{_libdir}/rpm-plugins/msm-device-sec-policy
 mkdir -p %{buildroot}%{_localstatedir}/lib/rpm
 
 #install -m 755 scripts/firmware.prov %{buildroot}%{_prefix}/lib/rpm
@@ -236,12 +238,17 @@ done
 
 #macros
 
-mkdir -p %{buildroot}%{_libdir}/rpm/tizen
-install -m 755 %{SOURCE21} %{buildroot}%{_libdir}/rpm/tizen
-install -m 644 %{SOURCE20} %{buildroot}%{_libdir}/rpm/tizen
+mkdir -p %{buildroot}%{_libexecdir}/rpm/tizen
+install -m 755 %{SOURCE21} %{buildroot}%{_libexecdir}/rpm/tizen
+install -m 644 %{SOURCE20} %{buildroot}%{_libexecdir}/rpm/tizen
+
+mkdir -p %{buildroot}/usr/share/license
+cp %{_builddir}/%{buildsubdir}/COPYING %{buildroot}/usr/share/license/%{name}
+cp %{_builddir}/%{buildsubdir}/COPYING %{buildroot}/usr/share/license/%{name}-libs
+cp %{_builddir}/%{buildsubdir}/COPYING %{buildroot}/usr/share/license/%{name}-security-plugin
 
 # avoid dragging in tonne of perl libs for an unused script
-chmod 0644 %{buildroot}/%{_libdir}/rpm/perldeps.pl
+chmod 0644 %{buildroot}/%{_libexecdir}/rpm/perldeps.pl
 
 rm -rf %{buildroot}%{_mandir}/*/man?
 %clean
@@ -271,15 +278,15 @@ exit 0
 
 
 %files  -f rpm.lang
-%manifest rpm.manifest
 %defattr(-,root,root,-)
+/usr/share/license/rpm
 %doc GROUPS COPYING CREDITS
 %exclude /usr/lib/rpm/rpmdb_loadcvt
 %dir %{_sysconfdir}/rpm
 
 %attr(0755, root, root)   %dir %{_localstatedir}/lib/rpm
 %attr(0644, root, root) %verify(not md5 size mtime) %ghost %config(missingok,noreplace) %{_localstatedir}/lib/rpm/*
-%attr(0755, root, root) %dir %{_libdir}/rpm
+%attr(0755, root, root) %dir %{_libexecdir}/rpm
 
 /bin/rpm
 %{_bindir}/rpmkeys
@@ -292,87 +299,89 @@ exit 0
 
 %{_libdir}/rpm-plugins/exec.so
 %{_libdir}/rpm-plugins/sepolicy.so
-%{_libdir}/rpm/elfdeps
 
+%{_libexecdir}/rpm/macros
+%{_libexecdir}/rpm/tizen/macros
+%{_libexecdir}/rpm/rpmpopt*
+%{_libexecdir}/rpm/rpmrc
 
-%{_libdir}/rpm/macros
-%{_libdir}/rpm/tizen/macros
-%{_libdir}/rpm/rpmpopt*
-%{_libdir}/rpm/rpmrc
+%{_libexecdir}/rpm/rpmdb_*
+%{_libexecdir}/rpm/rpm.daily
+%{_libexecdir}/rpm/rpm.log
+%{_libexecdir}/rpm/rpm2cpio.sh
+%{_libexecdir}/rpm/tgpg
 
-%{_libdir}/rpm/rpmdb_*
-%{_libdir}/rpm/rpm.daily
-%{_libdir}/rpm/rpm.log
-%{_libdir}/rpm/rpm2cpio.sh
-%{_libdir}/rpm/tgpg
-
-%{_libdir}/rpm/platform
+%{_libexecdir}/rpm/platform
+%manifest rpm.manifest
 
 %files libs
-%manifest rpm.manifest
 %defattr(-,root,root)
 %{_libdir}/librpm*.so.*
+/usr/share/license/%{name}-libs
+%manifest rpm.manifest
 
 %files build
-%manifest rpm.manifest
 %defattr(-,root,root)
 %{_bindir}/rpmbuild
 %{_bindir}/gendiff
 
-%{_libdir}/rpm/fileattrs/*.attr
-%{_libdir}/rpm/script.req
+%{_libexecdir}/rpm/fileattrs/*.attr
+%{_libexecdir}/rpm/script.req
 
-%{_libdir}/rpm/brp-*
-%{_libdir}/rpm/check-buildroot
-%{_libdir}/rpm/check-files
-%{_libdir}/rpm/check-prereqs
-%{_libdir}/rpm/check-rpaths*
-%{_libdir}/rpm/debugedit
-%{_libdir}/rpm/find-debuginfo.sh
-%{_libdir}/rpm/tizen/find-docs.sh
-%{_libdir}/rpm/find-lang.sh
-%{_libdir}/rpm/find-provides
-%{_libdir}/rpm/find-requires
-%{_libdir}/rpm/javadeps
-%{_libdir}/rpm/mono-find-provides
-%{_libdir}/rpm/mono-find-requires
-%{_libdir}/rpm/ocaml-find-provides.sh
-%{_libdir}/rpm/ocaml-find-requires.sh
-%{_libdir}/rpm/osgideps.pl
-%{_libdir}/rpm/perldeps.pl
-%{_libdir}/rpm/libtooldeps.sh
-%{_libdir}/rpm/pkgconfigdeps.sh
-%{_libdir}/rpm/perl.prov
-#%{_libdir}/rpm/debuginfo.prov
-#%{_libdir}/rpm/firmware.prov
-%{_libdir}/rpm/perl.req
-%{_libdir}/rpm/tcl.req
-%{_libdir}/rpm/pythondeps.sh
-%{_libdir}/rpm/rpmdeps
-%{_libdir}/rpm/config.guess
-%{_libdir}/rpm/config.sub
-%{_libdir}/rpm/mkinstalldirs
-%{_libdir}/rpm/desktop-file.prov
-%{_libdir}/rpm/fontconfig.prov
+%{_libexecdir}/rpm/brp-*
+%{_libexecdir}/rpm/check-buildroot
+%{_libexecdir}/rpm/check-files
+%{_libexecdir}/rpm/check-prereqs
+%{_libexecdir}/rpm/check-rpaths*
+%{_libexecdir}/rpm/debugedit
+%{_libexecdir}/rpm/elfdeps
+%{_libexecdir}/rpm/find-debuginfo.sh
+%{_libexecdir}/rpm/tizen/find-docs.sh
+%{_libexecdir}/rpm/find-lang.sh
+%{_libexecdir}/rpm/find-provides
+%{_libexecdir}/rpm/find-requires
+%{_libexecdir}/rpm/javadeps
+%{_libexecdir}/rpm/mono-find-provides
+%{_libexecdir}/rpm/mono-find-requires
+%{_libexecdir}/rpm/ocaml-find-provides.sh
+%{_libexecdir}/rpm/ocaml-find-requires.sh
+%{_libexecdir}/rpm/osgideps.pl
+%{_libexecdir}/rpm/perldeps.pl
+%{_libexecdir}/rpm/libtooldeps.sh
+%{_libexecdir}/rpm/pkgconfigdeps.sh
+%{_libexecdir}/rpm/perl.prov
+#%{_libexecdir}/rpm/debuginfo.prov
+#%{_libexecdir}/rpm/firmware.prov
+%{_libexecdir}/rpm/perl.req
+%{_libexecdir}/rpm/tcl.req
+%{_libexecdir}/rpm/pythondeps.sh
+%{_libexecdir}/rpm/rpmdeps
+%{_libexecdir}/rpm/config.guess
+%{_libexecdir}/rpm/config.sub
+%{_libexecdir}/rpm/mkinstalldirs
+%{_libexecdir}/rpm/desktop-file.prov
+%{_libexecdir}/rpm/fontconfig.prov
 
-%{_libdir}/rpm/macros.perl
-%{_libdir}/rpm/macros.python
-%{_libdir}/rpm/macros.php
+%{_libexecdir}/rpm/macros.perl
+%{_libexecdir}/rpm/macros.python
+%{_libexecdir}/rpm/macros.php
 
+%manifest rpm.manifest
 
 
 %files devel
-%manifest rpm.manifest
 %defattr(-,root,root)
 %{_includedir}/rpm
 %{_libdir}/librp*[a-z].so
 %{_bindir}/rpmgraph
 %{_libdir}/pkgconfig/rpm.pc
+%manifest rpm.manifest
 
 
 %files security-plugin
-%manifest rpm.manifest
 %defattr(-,root,root)
 %{_libdir}/rpm-plugins/msm.so
 %config(noreplace) %{_sysconfdir}/device-sec-policy
-
+%{_libdir}/rpm-plugins/msm-device-sec-policy
+/usr/share/license/%{name}-security-plugin
+%manifest rpm.manifest

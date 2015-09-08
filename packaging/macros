@@ -145,7 +145,6 @@
     %{!?__debug_package:/usr/lib/rpm/brp-strip %{__strip}} \
     /usr/lib/rpm/brp-strip-static-archive %{__strip} \
     /usr/lib/rpm/brp-strip-comment-note %{__strip} %{__objdump} \
-    /usr/lib/rpm/brp-python-bytecompile \
     /usr/lib/rpm/brp-python-hardlink \
     %{!?disable_docs_package:/usr/lib/rpm/tizen/find-docs.sh %{buildroot}} \
 %{nil}
@@ -237,7 +236,7 @@ rm -rf %{?buildroot:%{buildroot}} \
 # Should unpackaged files in a build root terminate a build?
 %_unpackaged_files_terminate_build    1
 
-%__global_cflags	-O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security
+%__global_cflags	-O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wl,--as-needed
 
 # Disable lookups
 %_hkp_keyserver  %{nil}

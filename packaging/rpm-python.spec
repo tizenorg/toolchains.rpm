@@ -15,13 +15,13 @@
 Summary: The RPM package management system
 Name: rpm-python
 Version: %{rpmver}
-Release: 1
+Release: 4
+License: GPLv2+
 BuildRequires: python-devel
-%{expand:%(sed -n -e '/^Source1001:/d' -e '/^Source0:/,/^##PYTHON##/p' <%_sourcedir/rpm.spec)}
+%{expand:%(sed -n -e '/^Source0:/,/^##PYTHON##/p' <%_sourcedir/rpm.spec)}
 Source100: rpm.spec
-Source1001: packaging/rpm-python.manifest 
+Source1002: rpm-python.manifest 
 Requires: popt >= 1.10.2.1
-Requires: curl
 Requires: rpm = %{version}
 BuildRequires: db4-devel
 
@@ -41,11 +41,11 @@ BuildRequires: ncurses-devel
 BuildRequires: bzip2-devel >= 0.9.0c-2
 BuildRequires: liblua-devel >= 5.1
 BuildRequires: libcap-devel
-BuildRequires: xz-devel >= 4.999.8
-BuildRequires: uthash-devel
 BuildRequires: libxml2-devel
 BuildRequires: libattr-devel
-BuildRequires: pkgconfig(libsmack)
+BuildRequires: uthash-devel
+BuildRequires: smack-devel
+BuildRequires: xz-devel >= 4.999.8
 
 
 %description
@@ -60,6 +60,7 @@ the package like its version, a description, etc.
 %install
 rm -rf $RPM_BUILD_ROOT
 
+cp %{SOURCE1002} .
 make DESTDIR="$RPM_BUILD_ROOT" install
 find "%{buildroot}" -not -type d -and -not -path %{buildroot}%{_libdir}/python%{py_ver}/site-packages/rpm/\* -print0 | xargs -0 rm
 pushd $RPM_BUILD_ROOT/%py_sitedir/rpm
