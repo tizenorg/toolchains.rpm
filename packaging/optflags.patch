@@ -34,8 +34,8 @@
 -optflags: armv5tejl -O2 -g -march=armv5te
 -optflags: armv6l -O2 -g -march=armv6
 -optflags: armv7l -O2 -g -march=armv7
--optflags: armv7hl -O2 -g -march=armv7-a -mfloat-abi=hard -mfpu=vfpv3-d16 -mno-thumb
--optflags: armv7nhl -O2 -g -march=armv7-a -mfloat-abi=hard -mfpu=neon -mno-thumb
+-optflags: armv7hl -O2 -g -march=armv7-a -mfloat-abi=hard -mfpu=vfpv3-d16
+-optflags: armv7nhl -O2 -g -march=armv7-a -mfloat-abi=hard -mfpu=neon
 -optflags: armv7thl -O2 -g -march=armv7-a -mfloat-abi=hard -mfpu=vfpv3-d16 -mthumb
 -optflags: armv7tnhl -O2 -g -march=armv7-a -mfloat-abi=hard -mfpu=neon -mthumb
 +optflags: armv3l %{__global_cflags} -fsigned-char -march=armv3
@@ -45,9 +45,9 @@
 +optflags: armv5tejl %{__global_cflags} -march=armv5te
 +Optflags: armv5tel %{__global_cflags}   -fmessage-length=0 -march=armv5te -mlittle-endian
 +Optflags: armv6l %{__global_cflags}  -fmessage-length=0 -march=armv6 -mlittle-endian  -mfpu=vfp -mfloat-abi=softfp -D__SOFTFP__
-+Optflags: armv7l %{__global_cflags}  -fmessage-length=0 -march=armv7-a -mtune=cortex-a8 -mlittle-endian  -mfpu=vfpv3 -mfloat-abi=softfp -D__SOFTFP__ -mthumb -Wa,-mimplicit-it=thumb
-+optflags: armv7hl %{__global_cflags} -fmessage-length=0 -march=armv7-a -mfloat-abi=hard -mfpu=vfpv3-d16 -mno-thumb
-+optflags: armv7nhl %{__global_cflags} -fmessage-length=0 -march=armv7-a -mfloat-abi=hard -mfpu=neon -mno-thumb  
++Optflags: armv7l %{__global_cflags}  -fmessage-length=0 -march=armv7-a -mtune=cortex-a8 -mlittle-endian  -mfpu=neon -mfloat-abi=softfp -D__SOFTFP__ -mthumb -Wa,-mimplicit-it=thumb
++optflags: armv7hl %{__global_cflags} -fmessage-length=0 -march=armv7-a -mfloat-abi=hard -mfpu=vfpv3-d16
++optflags: armv7nhl %{__global_cflags} -fmessage-length=0 -march=armv7-a -mfloat-abi=hard -mfpu=neon
 +optflags: armv7thl %{__global_cflags}  -fmessage-length=0 -march=armv7-a -mfloat-abi=hard -mfpu=vfpv3-d16 -mthumb
 +optflags: armv7tnhl %{__global_cflags}  -fmessage-length=0 -march=armv7-a -mfloat-abi=hard -mfpu=neon -mthumb  
 +

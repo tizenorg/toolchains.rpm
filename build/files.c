@@ -845,6 +845,7 @@ static rpmRC parseForSimple(rpmSpec spec, Package pkg, char * buf,
     char *s, *t;
     rpmRC res;
     char *specialDocBuf = NULL;
+    char *specialLicenseBuf = NULL;
 
     *fileName = NULL;
     res = RPMRC_OK;
@@ -893,6 +894,8 @@ static rpmRC parseForSimple(rpmSpec spec, Package pkg, char * buf,
 	if (*s != '/') {
 	    if (fl->currentFlags & RPMFILE_DOC) {
 		rstrscat(&specialDocBuf, " ", s, NULL);
+	    } else if (fl->currentFlags & RPMFILE_LICENSE) {
+		rstrscat(&specialLicenseBuf, " ", s, NULL);
 	    } else
 	    if (fl->currentFlags & RPMFILE_PUBKEY)
 	    {
@@ -934,6 +937,34 @@ static rpmRC parseForSimple(rpmSpec spec, Package pkg, char * buf,
 	    appendLineStringBuf(pkg->specialDoc, " $DOCDIR");
 	}
 	free(specialDocBuf);
+    }
+    if (specialLicenseBuf) {
+	if (*fileName || (fl->currentFlags & ~(RPMFILE_LICENSE))) {
+	    rpmlog(RPMLOG_ERR,
+		     _("Can't mix special %%license with other forms: %s\n"),
+		     (*fileName ? *fileName : ""));
+	    res = RPMRC_FAIL;
+	} else {
+	    /* XXX FIXME: this is easy to do as macro expansion */
+	    if (! fl->passedSpecialDoc) {
+		char *mkdocdir = rpmExpand("%{__mkdir_p} $DOCDIR", NULL);
+		pkg->specialDoc = newStringBuf();
+		appendStringBuf(pkg->specialDoc, "DOCDIR=$RPM_BUILD_ROOT");
+		appendLineStringBuf(pkg->specialDoc, pkg->specialDocDir);
+		appendLineStringBuf(pkg->specialDoc, "export DOCDIR");
+		appendLineStringBuf(pkg->specialDoc, mkdocdir);
+		free(mkdocdir);
+
+		*fileName = pkg->specialDocDir;
+		fl->passedSpecialDoc = 1;
+		fl->isSpecialDoc = 1;
+	    }
+
+	    appendStringBuf(pkg->specialDoc, "cp -pr ");
+	    appendStringBuf(pkg->specialDoc, specialLicenseBuf);
+	    appendLineStringBuf(pkg->specialDoc, " $DOCDIR");
+	}
+	free(specialLicenseBuf);
     }
 
     if (res != RPMRC_OK) {
@@ -1326,13 +1357,23 @@ static rpmRC recurseDir(FileList fl, const char * diskPath);
 static rpmRC addFile(FileList fl, const char * diskPath,
 		struct stat * statp)
 {
-    const char *cpioPath = diskPath;
+    size_t plen = strlen(diskPath);
+    char buf[plen + 1];
+    const char *cpioPath;
     struct stat statbuf;
     mode_t fileMode;
     uid_t fileUid;
     gid_t fileGid;
     const char *fileUname;
     const char *fileGname;
+
+    /* Strip trailing slash. The special case of '/' path is handled below. */
+    if (plen > 0 && diskPath[plen - 1] == '/') {
+	diskPath = strcpy(buf, diskPath);
+	buf[plen - 1] = '\0';
+    }
+    cpioPath = diskPath;
+
     
     /* Path may have prepended buildRoot, so locate the original filename. */
     /*
@@ -1394,8 +1435,8 @@ static rpmRC addFile(FileList fl, const char * diskPath,
 	}
     }
 
-    if ((! fl->isDir) && S_ISDIR(statp->st_mode)) {
-/* FIX: fl->buildRoot may be NULL */
+    /* Don't recurse into explicit %dir, don't double-recurse from fts */
+    if ((fl->isDir != 1) && (statp == &statbuf) && S_ISDIR(statp->st_mode)) {
 	return recurseDir(fl, diskPath);
     }
 
@@ -1529,8 +1570,6 @@ static rpmRC recurseDir(FileList fl, const char * diskPath)
     int myFtsOpts = (FTS_COMFOLLOW | FTS_NOCHDIR | FTS_PHYSICAL);
     rpmRC rc = RPMRC_FAIL;
 
-    fl->isDir = 1;  /* Keep it from following myftw() again         */
-
     ftsSet[0] = (char *) diskPath;
     ftsSet[1] = NULL;
     ftsp = Fts_open(ftsSet, myFtsOpts, NULL);
@@ -1562,8 +1601,6 @@ static rpmRC recurseDir(FileList fl, const char * diskPath)
 	    break;
     }
     (void) Fts_close(ftsp);
-
-    fl->isDir = 0;
 
     return rc;
 }

@@ -4,8 +4,9 @@
 
 
 Name:           rpm
+VCS:            external/rpm#ffd7318edc23db77145257774c704b33d171bde0
 Version:        4.9.1
-Release:        %{release_prefix}
+Release:        %{?release_prefix:%{release_prefix}.}5.3.%{?dist}%{!?dist:tizen}
 Summary:        The RPM package management system
 Url:            http://www.rpm.org/
 # Partially GPL/LGPL dual-licensed and some bits with BSD
@@ -179,7 +180,15 @@ rm -f rpmdb/db.h
 %patch86 -p1
 %patch87 -p1 -b .msm
 
+%{?opt_mcpu: %define replace_mopt 1}
+%{!?opt_mcpu: %define replace_mopt 0}
 
+%if %{replace_mopt}
+sed -e "/^Optflags: %{_target_cpu}/ s/-march[^ ]*/-mcpu=%{opt_mcpu}/g" -i rpmrc.in
+sed -e "/^Optflags: %{_target_cpu}/ s/-mtune[^ ]*//g" -i rpmrc.in
+sed -e "/^Optflags: %{_target_cpu}/ s/  / /g" -i rpmrc.in
+grep "^Optflags: %{_target_cpu}" -rn rpmrc.in
+%endif
 
 rm -f m4/libtool.m4
 rm -f m4/lt*.m4
@@ -195,6 +204,11 @@ export CPPFLAGS CFLAGS LDFLAGS
 
 libtoolize -f -c
 ./autogen.sh \
+%ifarch %arm
+    --build=%{_target_cpu}-tizen-linux-gnueabi \
+%else
+    --build=%{_target_cpu}-tizen-linux-gnu \
+%endif
     --prefix=%{_prefix} \
     --sysconfdir=%{_sysconfdir} \
     --localstatedir=%{_localstatedir} \
@@ -204,6 +218,7 @@ libtoolize -f -c
 %if %{with python}
     --enable-python \
 %endif
+    --with-vendor=tizen \
     --with-lua \
     --with-cap  \
     --with-msm \
@@ -218,9 +233,10 @@ find %{buildroot} -regex ".*\\.la$" | xargs rm -f --
 
 mkdir -p %{buildroot}%{_sysconfdir}/rpm
 mkdir -p %{buildroot}%{_libexecdir}/rpm
+mkdir -p %{buildroot}%{_libexecdir}/rpm-plugins
 install -m 644 %{SOURCE1} %{buildroot}%{_libexecdir}/rpm/fileattrs/libsymlink.attr
 install -m 644 %{SOURCE22} ${RPM_BUILD_ROOT}%{_sysconfdir}/device-sec-policy
-install -m 644 %{SOURCE22} ${RPM_BUILD_ROOT}%{_libdir}/rpm-plugins/msm-device-sec-policy
+install -m 644 %{SOURCE22} ${RPM_BUILD_ROOT}%{_libexecdir}/rpm-plugins/msm-device-sec-policy
 mkdir -p %{buildroot}%{_localstatedir}/lib/rpm
 
 #install -m 755 scripts/firmware.prov %{buildroot}%{_prefix}/lib/rpm
@@ -382,6 +398,6 @@ exit 0
 %defattr(-,root,root)
 %{_libdir}/rpm-plugins/msm.so
 %config(noreplace) %{_sysconfdir}/device-sec-policy
-%{_libdir}/rpm-plugins/msm-device-sec-policy
+%{_libexecdir}/rpm-plugins/msm-device-sec-policy
 /usr/share/license/%{name}-security-plugin
 %manifest rpm.manifest

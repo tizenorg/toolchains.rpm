@@ -54,10 +54,10 @@ diff -Nuarp rpm/build/parsePreamble.c rpm-security/build/parsePreamble.c
  	if (nump == NULL || *nump == '\0') {
  	    num = flag == RPMBUILD_ISSOURCE ? 0 : INT_MAX;
  	} else {
-@@ -891,6 +891,7 @@ static struct PreambleRec_s const preamb
-     {RPMTAG_BUGURL,		0, 0, LEN_AND_STR("bugurl")},
-     {RPMTAG_COLLECTIONS,	0, 0, LEN_AND_STR("collections")},
-     {RPMTAG_ORDERFLAGS,		2, 0, LEN_AND_STR("orderwithrequires")},
+@@ -913,6 +913,7 @@ static struct PreambleRec_s const preambleList[] = {
+     {RPMTAG_BUILDSUGGESTS,	0, 0, LEN_AND_STR("buildsuggests")},
+     {RPMTAG_BUILDENHANCES,	0, 0, LEN_AND_STR("buildsupplements")},
+     {RPMTAG_BUILDENHANCES,	0, 0, LEN_AND_STR("buildenhances")},
 +    {RPMTAG_SECMANIFEST,	0, 0, LEN_AND_STR("manifest")},
      {0, 0, 0, 0}
  };
@@ -4323,7 +4323,7 @@ diff -Nuarp rpm/security/msmmatch.c rpm-security/security/msmmatch.c
 diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 --- rpm/security/msmxattr.c	1970-01-01 02:00:00.000000000 +0200
 +++ rpm-security/security/msmxattr.c	2012-10-01 10:29:50.327983644 +0300
-@@ -0,0 +1,1338 @@
+@@ -0,0 +1,1344 @@
 +/*
 + * This file is part of MSM security plugin
 + * Greatly based on the code of MSSF security plugin
@@ -5045,6 +5045,8 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +		rpmlog(RPMLOG_ERR, "Request for a domain name %s that hasn't been yet defined by any package\n", mfx->request->ac_domain);
 + #ifdef ENABLE_DCHECKS
 +		return -1;
++ #else
++               return 0;
 + #endif
 +	}
 +
@@ -5061,6 +5063,8 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +	if (msmCheckDomainJoinPossibility(mfx, defined_ac_domain) < 0 )
 + #ifdef ENABLE_DCHECKS
 +		return -1;
++ #else
++               return 0;
 + #endif
 +	
 +	// now checking if security policy allows to join this domain
@@ -5072,6 +5076,8 @@ diff -Nuarp rpm/security/msmxattr.c rpm-security/security/msmxattr.c
 +	    rpmlog(RPMLOG_ERR, "Request for a domain name %s isn't allowed based on package sw source\n", mfx->request->ac_domain);
 + #ifdef ENABLE_DCHECKS
 +	    return -1;
++ #else
++           return 0;
 + #endif
 +	}
 +  return 0;

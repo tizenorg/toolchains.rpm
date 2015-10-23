@@ -14,11 +14,11 @@
 
 Summary: The RPM package management system
 Name: rpm-python
+License:        GPLv2+
 Version: %{rpmver}
 Release: 4
-License: GPLv2+
 BuildRequires: python-devel
-%{expand:%(sed -n -e '/^Source0:/,/^##PYTHON##/p' <%_sourcedir/rpm.spec)}
+%{expand:%(sed -n -e '/^Source1002:/d' -e '/^Source0:/,/^##PYTHON##/p' <%_sourcedir/rpm.spec)}
 Source100: rpm.spec
 Source1002: rpm-python.manifest 
 Requires: popt >= 1.10.2.1
@@ -41,12 +41,11 @@ BuildRequires: ncurses-devel
 BuildRequires: bzip2-devel >= 0.9.0c-2
 BuildRequires: liblua-devel >= 5.1
 BuildRequires: libcap-devel
+BuildRequires: xz-devel >= 4.999.8
+BuildRequires: uthash-devel
 BuildRequires: libxml2-devel
 BuildRequires: libattr-devel
-BuildRequires: uthash-devel
-BuildRequires: smack-devel
-BuildRequires: xz-devel >= 4.999.8
-
+BuildRequires: pkgconfig(libsmack)
 
 %description
 The RPM Package Manager (RPM) is a powerful command line driven
@@ -62,7 +61,7 @@ rm -rf $RPM_BUILD_ROOT
 
 cp %{SOURCE1002} .
 make DESTDIR="$RPM_BUILD_ROOT" install
-find "%{buildroot}" -not -type d -and -not -path %{buildroot}%{_libdir}/python%{py_ver}/site-packages/rpm/\* -print0 | xargs -0 rm
+find "%{buildroot}" -not -type d -and -not -path %{buildroot}/usr/lib/python%{py_ver}/site-packages/rpm/\* -print0 | xargs -0 rm
 pushd $RPM_BUILD_ROOT/%py_sitedir/rpm
 rm -f _rpmmodule.a _rpmmodule.la
 python %py_libdir/py_compile.py *.py
@@ -75,5 +74,5 @@ rm -rf $RPM_BUILD_ROOT
 %files
 %manifest rpm-python.manifest
 %defattr(-,root,root)
-%{_libdir}/python*
+/usr/lib/python*
 
